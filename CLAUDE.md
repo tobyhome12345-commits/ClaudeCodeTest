@@ -2,17 +2,24 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Repository
+## Git Workflow
 
-GitHub: https://github.com/tobyhome12345-commits/ClaudeCodeTest  
-Branch: `master`
+**Commit and push after every meaningful change.** This is required — not optional. The goal is that work is never lost and the GitHub history always reflects the current state of the project.
 
-After every set of file changes, commit with a clean descriptive message and push:
+- Stage specific files (not `git add -A`)
+- Write a clean, imperative commit message describing *what* changed and *why* (e.g. `"Add player dash ability"`, `"Fix charger AI wall collision"`)
+- Push immediately after committing
+
 ```
 git add <files>
-git commit -m "Add player dash ability"
+git commit -m "Descriptive message here"
 git push
 ```
+
+Don't batch up multiple features into one commit. Commit at the end of each logical unit of work — a bug fix, a new feature, a tuning pass — so the history is easy to read and revert.
+
+Repository: https://github.com/tobyhome12345-commits/ClaudeCodeTest  
+Branch: `master`
 
 ## Project Structure
 
