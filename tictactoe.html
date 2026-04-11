@@ -5,11 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tic Tac Toe</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       min-height: 100vh;
@@ -21,6 +17,7 @@
       font-family: 'Segoe UI', sans-serif;
       color: #eee;
       padding: 1.5rem 1rem;
+      gap: 0;
     }
 
     h1 {
@@ -30,78 +27,32 @@
       color: #e94560;
     }
 
-    #status {
-      font-size: 1.2rem;
-      margin-bottom: 1.5rem;
-      min-height: 1.5em;
-      color: #a8dadc;
-      text-align: center;
-    }
-
-    #board {
-      display: grid;
-      grid-template-columns: repeat(3, 110px);
-      grid-template-rows: repeat(3, 110px);
-      gap: 8px;
-    }
-
-    .cell {
-      background: #16213e;
-      border-radius: 12px;
+    #scoreboard {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 3rem;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background 0.15s, transform 0.1s;
-      user-select: none;
-    }
-
-    .cell:hover:not(.taken) {
-      background: #0f3460;
-      transform: scale(1.05);
-    }
-
-    .cell.x { color: #e94560; }
-    .cell.o { color: #a8dadc; }
-
-    .cell.win {
-      background: #0f3460;
-      animation: pulse 0.4s ease;
-    }
-
-    @keyframes pulse {
-      0%   { transform: scale(1); }
-      50%  { transform: scale(1.12); }
-      100% { transform: scale(1); }
-    }
-
-    #reset {
-      margin-top: 2rem;
-      padding: 0.7rem 2.5rem;
+      gap: 2rem;
+      margin-bottom: 1.2rem;
       font-size: 1rem;
-      background: #e94560;
-      color: #fff;
-      border: none;
-      border-radius: 30px;
-      cursor: pointer;
-      letter-spacing: 1px;
-      transition: background 0.2s, transform 0.1s;
     }
+    .score { text-align: center; }
+    .score span { display: block; font-size: 1.6rem; font-weight: bold; }
+    .score.x-score span  { color: #e94560; }
+    .score.o-score span  { color: #a8dadc; }
+    .score.draw-score span { color: #aaa; }
 
-    #reset:hover {
-      background: #c73652;
-      transform: scale(1.05);
-    }
-
-    #mode-controls {
+    /* ── Mode/grid control rows ─────────────────────────────── */
+    .ctrl-row {
       display: flex;
       gap: 0.6rem;
-      margin-bottom: 1.2rem;
+      margin-bottom: 0.7rem;
       align-items: center;
     }
-
+    .ctrl-label {
+      font-size: 0.7rem;
+      color: #555;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-right: 0.1rem;
+    }
     .mode-btn {
       padding: 0.45rem 1.2rem;
       font-size: 0.9rem;
@@ -112,459 +63,494 @@
       cursor: pointer;
       transition: all 0.2s;
     }
-
     .mode-btn.active {
       background: #0f3460;
       color: #fff;
       border-color: #a8dadc;
     }
 
-    #scoreboard {
-      display: flex;
-      gap: 2rem;
-      margin-bottom: 1.5rem;
-      font-size: 1rem;
-    }
-
-    .score { text-align: center; }
-    .score span { display: block; font-size: 1.6rem; font-weight: bold; }
-    .score.x-score span { color: #e94560; }
-    .score.o-score span { color: #a8dadc; }
-    .score.draw-score span { color: #aaa; }
-
-    /* --- Character picker --- */
-
+    /* ── Character picker ───────────────────────────────────── */
     #character-picker {
       display: none;
       flex-direction: column;
       align-items: center;
-      gap: 0.6rem;
-      margin-bottom: 1.2rem;
+      gap: 0.55rem;
+      margin-bottom: 0.8rem;
       width: 100%;
-      max-width: 560px;
+      max-width: 580px;
     }
-
     #character-picker h3 {
-      font-size: 0.85rem;
+      font-size: 0.78rem;
       letter-spacing: 2px;
       color: #aaa;
       text-transform: uppercase;
     }
-
     #character-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.55rem;
+      gap: 0.5rem;
       justify-content: center;
     }
-
     .char-card {
       background: #16213e;
       border: 2px solid #0f3460;
       border-radius: 14px;
-      padding: 0.6rem 0.8rem;
+      padding: 0.55rem 0.7rem;
       cursor: pointer;
       transition: all 0.2s;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.25rem;
-      width: 100px;
+      gap: 0.2rem;
+      width: 96px;
       text-align: center;
-      position: relative;
     }
-
-    .char-card:hover {
-      border-color: #a8dadc;
-      background: #0f3460;
-      transform: scale(1.04);
-    }
-
-    .char-card.selected {
-      border-color: #e94560;
-      background: #0f3460;
-      box-shadow: 0 0 12px #e9456044;
-    }
-
-    .char-avatar {
-      font-size: 2rem;
-      line-height: 1;
-    }
-
-    .char-name {
-      font-size: 0.8rem;
-      font-weight: bold;
-      color: #eee;
-    }
-
+    .char-card:hover   { border-color: #a8dadc; background: #0f3460; transform: scale(1.04); }
+    .char-card.selected { border-color: #e94560; background: #0f3460; box-shadow: 0 0 14px #e9456055; }
+    .char-avatar { font-size: 2rem; line-height: 1; }
+    .char-name   { font-size: 0.78rem; font-weight: bold; color: #eee; }
     .char-diff {
-      font-size: 0.65rem;
-      font-weight: bold;
-      letter-spacing: 1px;
-      padding: 0.15rem 0.45rem;
-      border-radius: 10px;
-      text-transform: uppercase;
+      font-size: 0.6rem; font-weight: bold; letter-spacing: 1px;
+      padding: 0.12rem 0.4rem; border-radius: 10px; text-transform: uppercase;
     }
-
-    .diff-easy    { background: #1b4332; color: #52b788; }
-    .diff-medium  { background: #7b4f00; color: #f4a261; }
-    .diff-hard    { background: #3b0063; color: #c77dff; }
+    .diff-easy       { background: #1b4332; color: #52b788; }
+    .diff-medium     { background: #7b4f00; color: #f4a261; }
+    .diff-hard       { background: #3b0063; color: #c77dff; }
     .diff-unbeatable { background: #3d0000; color: #e94560; }
 
-    /* Active character banner */
-    #active-char-banner {
+    /* ── Selected character info panel ─────────────────────── */
+    #char-info-panel {
       display: none;
       align-items: center;
-      gap: 0.7rem;
-      background: #0f3460;
-      border: 2px solid #a8dadc33;
+      gap: 0.9rem;
+      background: #0d1b34;
+      border: 2px solid #1a3a6a;
       border-radius: 14px;
-      padding: 0.5rem 1rem;
-      margin-bottom: 1rem;
-      max-width: 400px;
+      padding: 0.65rem 1.1rem;
       width: 100%;
+      max-width: 440px;
+      margin-top: 0.1rem;
+    }
+    #cip-avatar { font-size: 2.2rem; flex-shrink: 0; }
+    #cip-body   { display: flex; flex-direction: column; gap: 0.2rem; }
+    #cip-name   { font-size: 1rem; font-weight: bold; color: #eee; }
+    #cip-diff   { font-size: 0.65rem; font-weight: bold; letter-spacing: 1px; display: inline-block; padding: 0.12rem 0.4rem; border-radius: 8px; margin-bottom: 0.1rem; }
+    #cip-desc   { font-size: 0.8rem; color: #a8dadc; line-height: 1.4; }
+
+    /* ── Board & cells ──────────────────────────────────────── */
+    #status {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      min-height: 1.4em;
+      color: #a8dadc;
+      text-align: center;
+    }
+    #board {
+      display: grid;
+      gap: 6px;
+    }
+    .cell {
+      background: #16213e;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      user-select: none;
+    }
+    .cell:hover:not(.taken) { background: #0f3460; transform: scale(1.05); }
+    .cell.x   { color: #e94560; }
+    .cell.o   { color: #a8dadc; }
+    .cell.win { background: #0f3460; animation: pulse 0.4s ease; }
+
+    @keyframes pulse {
+      0%  { transform: scale(1);    }
+      50% { transform: scale(1.12); }
+      100%{ transform: scale(1);    }
     }
 
-    #active-char-banner .banner-avatar { font-size: 1.8rem; }
-
-    #active-char-info { display: flex; flex-direction: column; gap: 0.1rem; }
-    #active-char-info .banner-name { font-size: 0.95rem; font-weight: bold; color: #eee; }
-    #active-char-info .banner-desc { font-size: 0.75rem; color: #a8dadc; }
-    #active-char-info .banner-diff { font-size: 0.65rem; font-weight: bold; letter-spacing: 1px; }
+    #reset {
+      margin-top: 1.6rem;
+      padding: 0.7rem 2.5rem;
+      font-size: 1rem;
+      background: #e94560;
+      color: #fff;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    #reset:hover { background: #c73652; transform: scale(1.05); }
   </style>
 </head>
 <body>
   <h1>TIC TAC TOE</h1>
 
   <div id="scoreboard">
-    <div class="score x-score">You <span id="score-x">0</span></div>
-    <div class="score draw-score">Draws <span id="score-d">0</span></div>
-    <div class="score o-score">CPU <span id="score-o">0</span></div>
+    <div class="score x-score"><span id="score-x">0</span><span id="lbl-x" style="font-size:0.8rem;color:#aaa;font-weight:normal">X</span></div>
+    <div class="score draw-score"><span id="score-d">0</span><span style="font-size:0.8rem;color:#aaa;font-weight:normal">Draws</span></div>
+    <div class="score o-score"><span id="score-o">0</span><span id="lbl-o" style="font-size:0.8rem;color:#aaa;font-weight:normal">O</span></div>
   </div>
 
-  <div id="mode-controls">
+  <!-- Mode row -->
+  <div class="ctrl-row">
+    <span class="ctrl-label">Mode</span>
     <button class="mode-btn active" id="btn-2p">2 Players</button>
     <button class="mode-btn" id="btn-cpu">vs Computer</button>
   </div>
 
-  <!-- Character picker (visible in CPU mode) -->
+  <!-- Grid size row -->
+  <div class="ctrl-row" style="margin-bottom:1rem">
+    <span class="ctrl-label">Grid</span>
+    <button class="mode-btn active" id="btn-3x3">3 × 3</button>
+    <button class="mode-btn" id="btn-5x5">5 × 5</button>
+  </div>
+
+  <!-- Character picker (CPU mode only) -->
   <div id="character-picker">
     <h3>Choose your opponent</h3>
     <div id="character-grid"></div>
-  </div>
-
-  <!-- Active character banner (shown during game in CPU mode) -->
-  <div id="active-char-banner">
-    <div class="banner-avatar" id="banner-avatar"></div>
-    <div id="active-char-info">
-      <div class="banner-name" id="banner-name"></div>
-      <div class="banner-diff" id="banner-diff-label"></div>
-      <div class="banner-desc" id="banner-desc"></div>
+    <!-- Info panel updates immediately on selection -->
+    <div id="char-info-panel">
+      <div id="cip-avatar"></div>
+      <div id="cip-body">
+        <div id="cip-name"></div>
+        <div id="cip-diff"></div>
+        <div id="cip-desc"></div>
+      </div>
     </div>
   </div>
 
   <div id="status">X's turn</div>
-
-  <div id="board">
-    <div class="cell" data-i="0"></div>
-    <div class="cell" data-i="1"></div>
-    <div class="cell" data-i="2"></div>
-    <div class="cell" data-i="3"></div>
-    <div class="cell" data-i="4"></div>
-    <div class="cell" data-i="5"></div>
-    <div class="cell" data-i="6"></div>
-    <div class="cell" data-i="7"></div>
-    <div class="cell" data-i="8"></div>
-  </div>
-
+  <div id="board"></div>
   <button id="reset">New Game</button>
 
   <script>
-    // ─── Win conditions ───────────────────────────────────────────────────────
-    const WINS = [
-      [0,1,2],[3,4,5],[6,7,8],
-      [0,3,6],[1,4,7],[2,5,8],
-      [0,4,8],[2,4,6]
-    ];
-
-    // ─── Characters ──────────────────────────────────────────────────────────
-    // Each character has a name, avatar, difficulty label, css class, description,
-    // and a getMoveIndex(board) function returning the cell index to play.
-    const CHARACTERS = [
-      {
-        id: 'randy',
-        name: 'Randy',
-        avatar: '🎲',
-        difficulty: 'Easy',
-        diffClass: 'diff-easy',
-        desc: 'Totally random. Pure chaos — anyone can beat him.',
-        getMove(board) {
-          const empty = getEmpty(board);
-          return empty[Math.floor(Math.random() * empty.length)];
+  // ─── Characters ─────────────────────────────────────────────────────────────
+  // getMove(board, size) — board is flat array, size is grid dimension (3 or 5)
+  const CHARACTERS = [
+    {
+      id: 'randy', name: 'Randy', avatar: '🎲',
+      difficulty: 'Easy', diffClass: 'diff-easy',
+      desc: 'Plays completely at random. Pure chaos — even a beginner can beat him.',
+      getMove(board) {
+        return randomEmpty(board);
+      }
+    },
+    {
+      id: 'cassie', name: 'Cassie', avatar: '🛡️',
+      difficulty: 'Medium', diffClass: 'diff-medium',
+      desc: 'Defensive queen. She always blocks your winning move — but never looks more than one step ahead.',
+      getMove(board) {
+        const win   = findWinningMove(board, 'O');
+        if (win !== -1) return win;
+        const block = findWinningMove(board, 'X');
+        if (block !== -1) return block;
+        return randomEmpty(board);
+      }
+    },
+    {
+      id: 'oscar', name: 'Oscar', avatar: '⚔️',
+      difficulty: 'Medium', diffClass: 'diff-medium',
+      desc: 'All attack, no defence. He chases the win but ignores your threats 60% of the time.',
+      getMove(board) {
+        const win = findWinningMove(board, 'O');
+        if (win !== -1) return win;
+        if (Math.random() < 0.4) {
+          const block = findWinningMove(board, 'X');
+          if (block !== -1) return block;
         }
-      },
-      {
-        id: 'cassie',
-        name: 'Cassie',
-        avatar: '🛡️',
-        difficulty: 'Medium',
-        diffClass: 'diff-medium',
-        desc: 'Defensive queen. She blocks every threat but rarely plans ahead.',
-        getMove(board) {
-          // Always block, sometimes win, otherwise pick center/corner/random
-          const win = findWinningMove(board, 'O');
+        const corners = getCorners().filter(i => board[i] === null);
+        if (corners.length) return corners[Math.floor(Math.random() * corners.length)];
+        return randomEmpty(board);
+      }
+    },
+    {
+      id: 'eva', name: 'Eva', avatar: '🧠',
+      difficulty: 'Hard', diffClass: 'diff-hard',
+      desc: 'Near-perfect strategist. Runs full look-ahead on 3×3, deep analysis on 5×5 — but slips up about once per game.',
+      getMove(board) {
+        // 85% minimax, 15% deliberate mistake
+        if (Math.random() < 0.15) {
+          const win   = findWinningMove(board, 'O');
           if (win !== -1) return win;
           const block = findWinningMove(board, 'X');
           if (block !== -1) return block;
-          // Prefers edge cells (weak positional play)
-          const edges = [1,3,5,7].filter(i => board[i] === null);
-          if (edges.length) return edges[Math.floor(Math.random() * edges.length)];
-          return randomEmpty(board);
-        }
-      },
-      {
-        id: 'oscar',
-        name: 'Oscar',
-        avatar: '⚔️',
-        difficulty: 'Medium',
-        diffClass: 'diff-medium',
-        desc: 'Pure aggression. Goes for the win first, but often forgets to block.',
-        getMove(board) {
-          // Tries to win, skips blocking 60% of the time, then corners
-          const win = findWinningMove(board, 'O');
-          if (win !== -1) return win;
-          // Only blocks 40% of the time
-          if (Math.random() < 0.4) {
-            const block = findWinningMove(board, 'X');
-            if (block !== -1) return block;
-          }
-          // Prefers corners aggressively
-          const corners = [0,2,6,8].filter(i => board[i] === null);
+          const corners = getCorners().filter(i => board[i] === null);
           if (corners.length) return corners[Math.floor(Math.random() * corners.length)];
           return randomEmpty(board);
         }
-      },
-      {
-        id: 'eva',
-        name: 'Eva',
-        avatar: '🧠',
-        difficulty: 'Hard',
-        diffClass: 'diff-hard',
-        desc: 'Strategic and sharp. Uses minimax but makes one slip-up per game.',
-        getMove(board) {
-          // 85% optimal minimax, 15% smart-ish random (takes win/block or corner)
-          if (Math.random() < 0.15) {
-            const win = findWinningMove(board, 'O');
-            if (win !== -1) return win;
-            const block = findWinningMove(board, 'X');
-            if (block !== -1) return block;
-            const corners = [0,2,6,8].filter(i => board[i] === null);
-            if (corners.length) return corners[Math.floor(Math.random() * corners.length)];
-            return randomEmpty(board);
-          }
-          return minimax(board.slice(), 'O', -Infinity, Infinity).index;
-        }
-      },
-      {
-        id: 'max',
-        name: 'MAX-9',
-        avatar: '🤖',
-        difficulty: 'Unbeatable',
-        diffClass: 'diff-unbeatable',
-        desc: 'Cold logic. Perfect play every time. You cannot win.',
-        getMove(board) {
-          return minimax(board.slice(), 'O', -Infinity, Infinity).index;
-        }
+        const depth = gridSize === 3 ? 9 : 3;
+        return minimaxDeep(board.slice(), 'O', -Infinity, Infinity, depth).index;
       }
-    ];
-
-    // ─── State ────────────────────────────────────────────────────────────────
-    let board = Array(9).fill(null);
-    let current = 'X';
-    let over = false;
-    let vsComputer = false;
-    let selectedChar = CHARACTERS[0];
-    let scores = { X: 0, O: 0, D: 0 };
-
-    const cells = document.querySelectorAll('.cell');
-    const status = document.getElementById('status');
-
-    // ─── Build character grid ─────────────────────────────────────────────────
-    const charGrid = document.getElementById('character-grid');
-    CHARACTERS.forEach(char => {
-      const card = document.createElement('div');
-      card.className = 'char-card' + (char.id === selectedChar.id ? ' selected' : '');
-      card.dataset.id = char.id;
-      card.innerHTML = `
-        <div class="char-avatar">${char.avatar}</div>
-        <div class="char-name">${char.name}</div>
-        <div class="char-diff ${char.diffClass}">${char.difficulty}</div>
-      `;
-      card.addEventListener('click', () => selectCharacter(char));
-      charGrid.appendChild(card);
-    });
-
-    function selectCharacter(char) {
-      selectedChar = char;
-      document.querySelectorAll('.char-card').forEach(c => {
-        c.classList.toggle('selected', c.dataset.id === char.id);
-      });
-      resetGame();
-    }
-
-    function updateBanner() {
-      const banner = document.getElementById('active-char-banner');
-      if (!vsComputer) { banner.style.display = 'none'; return; }
-      banner.style.display = 'flex';
-      document.getElementById('banner-avatar').textContent = selectedChar.avatar;
-      document.getElementById('banner-name').textContent = selectedChar.name;
-      document.getElementById('banner-desc').textContent = selectedChar.desc;
-      const diffEl = document.getElementById('banner-diff-label');
-      diffEl.textContent = selectedChar.difficulty;
-      diffEl.className = 'banner-diff ' + selectedChar.diffClass;
-    }
-
-    // ─── Mode toggle ──────────────────────────────────────────────────────────
-    document.getElementById('btn-2p').addEventListener('click', () => setMode(false));
-    document.getElementById('btn-cpu').addEventListener('click', () => setMode(true));
-
-    function setMode(cpu) {
-      vsComputer = cpu;
-      document.getElementById('btn-2p').classList.toggle('active', !cpu);
-      document.getElementById('btn-cpu').classList.toggle('active', cpu);
-      document.getElementById('character-picker').style.display = cpu ? 'flex' : 'none';
-      // Update scoreboard labels
-      document.querySelector('.score.x-score').childNodes[0].textContent = cpu ? 'You ' : 'X ';
-      document.querySelector('.score.o-score').childNodes[0].textContent = cpu ? 'CPU ' : 'O ';
-      updateBanner();
-      resetGame();
-    }
-
-    // ─── Cell clicks ──────────────────────────────────────────────────────────
-    cells.forEach(cell => cell.addEventListener('click', () => {
-      const i = +cell.dataset.i;
-      if (over || board[i]) return;
-      if (vsComputer && current === 'O') return;
-
-      placeMove(i, current);
-
-      if (!over && vsComputer && current === 'O') {
-        cells.forEach(c => c.style.pointerEvents = 'none');
-        setTimeout(() => {
-          const move = selectedChar.getMove(board);
-          if (move !== undefined && move !== -1) placeMove(move, 'O');
-          cells.forEach(c => c.style.pointerEvents = '');
-        }, 350);
+    },
+    {
+      id: 'max', name: 'MAX-9', avatar: '🤖',
+      difficulty: 'Unbeatable', diffClass: 'diff-unbeatable',
+      desc: 'Cold, perfect logic. Full look-ahead on 3×3, deep search on 5×5. You cannot win — only draw.',
+      getMove(board) {
+        const depth = gridSize === 3 ? 9 : 5;
+        return minimaxDeep(board.slice(), 'O', -Infinity, Infinity, depth).index;
       }
-    }));
+    }
+  ];
 
-    function placeMove(i, player) {
-      board[i] = player;
-      cells[i].textContent = player;
-      cells[i].classList.add(player.toLowerCase(), 'taken');
+  // ─── State ───────────────────────────────────────────────────────────────────
+  let gridSize     = 3;
+  let WINS         = buildWins(3);
+  let board        = Array(9).fill(null);
+  let cells        = [];         // populated by buildBoard()
+  let current      = 'X';
+  let over         = false;
+  let vsComputer   = false;
+  let selectedChar = CHARACTERS[0];
+  let scores       = { X: 0, O: 0, D: 0 };
 
-      const winLine = checkWin(player);
-      if (winLine) {
-        winLine.forEach(idx => cells[idx].classList.add('win'));
-        let label;
-        if (vsComputer) {
-          label = player === 'X' ? 'You win!' : `${selectedChar.name} wins!`;
-        } else {
-          label = `${player} wins!`;
-        }
-        status.textContent = label;
-        scores[player]++;
-        updateScores();
-        over = true;
-      } else if (board.every(Boolean)) {
-        status.textContent = "It's a draw!";
-        scores.D++;
-        updateScores();
-        over = true;
+  const statusEl = document.getElementById('status');
+
+  // ─── Win-line builder (works for any size, always 3-in-a-row) ────────────────
+  function buildWins(size) {
+    const WIN = 3, lines = [];
+    for (let r = 0; r < size; r++)
+      for (let c = 0; c <= size - WIN; c++) {
+        const l = []; for (let k = 0; k < WIN; k++) l.push(r * size + c + k); lines.push(l);
+      }
+    for (let c = 0; c < size; c++)
+      for (let r = 0; r <= size - WIN; r++) {
+        const l = []; for (let k = 0; k < WIN; k++) l.push((r + k) * size + c); lines.push(l);
+      }
+    for (let r = 0; r <= size - WIN; r++)
+      for (let c = 0; c <= size - WIN; c++) {
+        const l = []; for (let k = 0; k < WIN; k++) l.push((r + k) * size + c + k); lines.push(l);
+      }
+    for (let r = 0; r <= size - WIN; r++)
+      for (let c = WIN - 1; c < size; c++) {
+        const l = []; for (let k = 0; k < WIN; k++) l.push((r + k) * size + c - k); lines.push(l);
+      }
+    return lines;
+  }
+
+  // ─── Build DOM board ─────────────────────────────────────────────────────────
+  function buildBoard() {
+    const boardEl   = document.getElementById('board');
+    boardEl.innerHTML = '';
+    const cellPx   = gridSize === 5 ? 78 : 110;
+    const fontSize = gridSize === 5 ? '1.8rem' : '3rem';
+    boardEl.style.gridTemplateColumns = `repeat(${gridSize}, ${cellPx}px)`;
+    boardEl.style.gridTemplateRows    = `repeat(${gridSize}, ${cellPx}px)`;
+    cells = [];
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      const cell = document.createElement('div');
+      cell.className  = 'cell';
+      cell.dataset.i  = i;
+      cell.style.fontSize = fontSize;
+      cell.addEventListener('click', onCellClick);
+      boardEl.appendChild(cell);
+      cells.push(cell);
+    }
+  }
+
+  function onCellClick() {
+    const i = +this.dataset.i;
+    if (over || board[i]) return;
+    if (vsComputer && current === 'O') return;
+    placeMove(i, current);
+    if (!over && vsComputer && current === 'O') {
+      cells.forEach(c => c.style.pointerEvents = 'none');
+      setTimeout(() => {
+        const move = selectedChar.getMove(board);
+        if (move !== undefined && move !== -1) placeMove(move, 'O');
+        cells.forEach(c => c.style.pointerEvents = '');
+      }, 350);
+    }
+  }
+
+  // ─── Build character picker cards ────────────────────────────────────────────
+  const charGrid = document.getElementById('character-grid');
+  CHARACTERS.forEach(char => {
+    const card = document.createElement('div');
+    card.className  = 'char-card' + (char.id === selectedChar.id ? ' selected' : '');
+    card.dataset.id = char.id;
+    card.innerHTML  = `
+      <div class="char-avatar">${char.avatar}</div>
+      <div class="char-name">${char.name}</div>
+      <div class="char-diff ${char.diffClass}">${char.difficulty}</div>
+    `;
+    card.addEventListener('click', () => selectCharacter(char));
+    charGrid.appendChild(card);
+  });
+
+  function selectCharacter(char) {
+    selectedChar = char;
+    document.querySelectorAll('.char-card').forEach(c =>
+      c.classList.toggle('selected', c.dataset.id === char.id)
+    );
+    updateCharInfoPanel();   // ← fix: update the info panel immediately
+    resetGame();
+  }
+
+  function updateCharInfoPanel() {
+    const panel = document.getElementById('char-info-panel');
+    if (!vsComputer) { panel.style.display = 'none'; return; }
+    panel.style.display = 'flex';
+    document.getElementById('cip-avatar').textContent = selectedChar.avatar;
+    document.getElementById('cip-name').textContent   = selectedChar.name;
+    document.getElementById('cip-desc').textContent   = selectedChar.desc;
+    const diffEl = document.getElementById('cip-diff');
+    diffEl.textContent  = selectedChar.difficulty;
+    diffEl.className    = selectedChar.diffClass;
+  }
+
+  // ─── Mode & grid toggles ─────────────────────────────────────────────────────
+  document.getElementById('btn-2p').addEventListener('click',  () => setMode(false));
+  document.getElementById('btn-cpu').addEventListener('click', () => setMode(true));
+  document.getElementById('btn-3x3').addEventListener('click', () => setGrid(3));
+  document.getElementById('btn-5x5').addEventListener('click', () => setGrid(5));
+
+  function setMode(cpu) {
+    vsComputer = cpu;
+    document.getElementById('btn-2p').classList.toggle('active', !cpu);
+    document.getElementById('btn-cpu').classList.toggle('active', cpu);
+    document.getElementById('character-picker').style.display = cpu ? 'flex' : 'none';
+    document.getElementById('lbl-x').textContent = cpu ? 'You'  : 'X';
+    document.getElementById('lbl-o').textContent = cpu ? 'CPU'  : 'O';
+    updateCharInfoPanel();
+    resetGame();
+  }
+
+  function setGrid(size) {
+    gridSize = size;
+    WINS     = buildWins(size);
+    document.getElementById('btn-3x3').classList.toggle('active', size === 3);
+    document.getElementById('btn-5x5').classList.toggle('active', size === 5);
+    scores   = { X: 0, O: 0, D: 0 };
+    updateScores();
+    buildBoard();
+    resetGame();
+  }
+
+  // ─── Game logic ──────────────────────────────────────────────────────────────
+  function placeMove(i, player) {
+    board[i] = player;
+    cells[i].textContent = player;
+    cells[i].classList.add(player.toLowerCase(), 'taken');
+
+    const winLine = checkWin(player);
+    if (winLine) {
+      winLine.forEach(idx => cells[idx].classList.add('win'));
+      let label;
+      if (vsComputer) label = player === 'X' ? 'You win!' : `${selectedChar.name} wins!`;
+      else            label = `${player} wins!`;
+      statusEl.textContent = label;
+      scores[player]++;
+      updateScores();
+      over = true;
+    } else if (board.every(Boolean)) {
+      statusEl.textContent = "It's a draw!";
+      scores.D++;
+      updateScores();
+      over = true;
+    } else {
+      current = player === 'X' ? 'O' : 'X';
+      if (vsComputer) {
+        statusEl.textContent = current === 'X'
+          ? 'Your turn'
+          : `${selectedChar.name} is thinking…`;
       } else {
-        current = player === 'X' ? 'O' : 'X';
-        if (vsComputer) {
-          status.textContent = current === 'X' ? "Your turn" : `${selectedChar.name} is thinking…`;
-        } else {
-          status.textContent = `${current}'s turn`;
-        }
+        statusEl.textContent = `${current}'s turn`;
       }
     }
+  }
 
-    function checkWin(player) {
-      return WINS.find(line => line.every(i => board[i] === player)) || null;
+  function checkWin(player) {
+    return WINS.find(line => line.every(i => board[i] === player)) || null;
+  }
+
+  function updateScores() {
+    document.getElementById('score-x').textContent = scores.X;
+    document.getElementById('score-o').textContent = scores.O;
+    document.getElementById('score-d').textContent = scores.D;
+  }
+
+  function resetGame() {
+    board   = Array(gridSize * gridSize).fill(null);
+    current = 'X';
+    over    = false;
+    statusEl.textContent = vsComputer ? 'Your turn' : "X's turn";
+    cells.forEach(cell => {
+      cell.textContent = '';
+      cell.className   = 'cell';
+      cell.style.fontSize  = gridSize === 5 ? '1.8rem' : '3rem';
+      cell.style.pointerEvents = '';
+    });
+  }
+
+  // ─── AI helpers ──────────────────────────────────────────────────────────────
+  function getEmpty(b)    { return b.map((v, i) => v === null ? i : -1).filter(i => i !== -1); }
+  function randomEmpty(b) { const e = getEmpty(b); return e[Math.floor(Math.random() * e.length)]; }
+  function getCorners()   { return [0, gridSize - 1, gridSize * (gridSize - 1), gridSize * gridSize - 1]; }
+
+  function findWinningMove(b, player) {
+    for (const i of getEmpty(b)) {
+      b[i] = player;
+      const wins = WINS.some(line => line.every(j => b[j] === player));
+      b[i] = null;
+      if (wins) return i;
     }
+    return -1;
+  }
 
-    function updateScores() {
-      document.getElementById('score-x').textContent = scores.X;
-      document.getElementById('score-o').textContent = scores.O;
-      document.getElementById('score-d').textContent = scores.D;
+  // Board heuristic for depth-limited minimax (used on 5×5)
+  function evalBoard(b) {
+    let score = 0;
+    for (const line of WINS) {
+      const o = line.filter(i => b[i] === 'O').length;
+      const x = line.filter(i => b[i] === 'X').length;
+      if (x === 0) score += o * o;
+      if (o === 0) score -= x * x;
     }
+    return score;
+  }
 
-    // ─── AI helpers ───────────────────────────────────────────────────────────
-    function getEmpty(b) {
-      return b.map((v, i) => v === null ? i : -1).filter(i => i !== -1);
-    }
+  // Depth-limited minimax with alpha-beta pruning.
+  // depth=9 on 3×3 is effectively unlimited; depth=5 is fast enough on 5×5.
+  function minimaxDeep(b, player, alpha, beta, depth) {
+    const oWin = WINS.find(line => line.every(i => b[i] === 'O'));
+    const xWin = WINS.find(line => line.every(i => b[i] === 'X'));
+    if (oWin) return { score: 1000 };
+    if (xWin) return { score: -1000 };
+    const empty = getEmpty(b);
+    if (empty.length === 0) return { score: 0 };
+    if (depth === 0)        return { score: evalBoard(b) };
 
-    function randomEmpty(b) {
-      const e = getEmpty(b);
-      return e[Math.floor(Math.random() * e.length)];
-    }
+    let best = player === 'O'
+      ? { score: -Infinity, index: -1 }
+      : { score:  Infinity, index: -1 };
 
-    function findWinningMove(b, player) {
-      for (const i of getEmpty(b)) {
-        b[i] = player;
-        const wins = WINS.some(line => line.every(j => b[j] === player));
-        b[i] = null;
-        if (wins) return i;
+    for (const i of empty) {
+      b[i] = player;
+      const result = minimaxDeep(b, player === 'O' ? 'X' : 'O', alpha, beta, depth - 1);
+      b[i] = null;
+      result.index = i;
+      if (player === 'O') {
+        if (result.score > best.score) best = result;
+        alpha = Math.max(alpha, best.score);
+      } else {
+        if (result.score < best.score) best = result;
+        beta  = Math.min(beta,  best.score);
       }
-      return -1;
+      if (beta <= alpha) break;
     }
+    return best;
+  }
 
-    function minimax(b, player, alpha, beta) {
-      const xWin = WINS.find(line => line.every(i => b[i] === 'X'));
-      const oWin = WINS.find(line => line.every(i => b[i] === 'O'));
-      if (oWin) return { score: 10 };
-      if (xWin) return { score: -10 };
-      const empty = getEmpty(b);
-      if (empty.length === 0) return { score: 0 };
-
-      let best = player === 'O'
-        ? { score: -Infinity, index: -1 }
-        : { score: Infinity, index: -1 };
-
-      for (const i of empty) {
-        b[i] = player;
-        const result = minimax(b, player === 'O' ? 'X' : 'O', alpha, beta);
-        b[i] = null;
-        result.index = i;
-
-        if (player === 'O') {
-          if (result.score > best.score) best = result;
-          alpha = Math.max(alpha, best.score);
-        } else {
-          if (result.score < best.score) best = result;
-          beta = Math.min(beta, best.score);
-        }
-        if (beta <= alpha) break;
-      }
-      return best;
-    }
-
-    // ─── Reset ────────────────────────────────────────────────────────────────
-    function resetGame() {
-      board = Array(9).fill(null);
-      current = 'X';
-      over = false;
-      status.textContent = vsComputer ? "Your turn" : "X's turn";
-      cells.forEach(cell => {
-        cell.textContent = '';
-        cell.className = 'cell';
-        cell.style.pointerEvents = '';
-      });
-    }
-
-    document.getElementById('reset').addEventListener('click', resetGame);
+  // ─── Init ────────────────────────────────────────────────────────────────────
+  document.getElementById('reset').addEventListener('click', resetGame);
+  buildBoard();
+  resetGame();
   </script>
 </body>
 </html>
