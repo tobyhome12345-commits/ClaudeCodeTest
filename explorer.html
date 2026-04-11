@@ -363,10 +363,9 @@ const game = {
 // ═══════════════════════════════════════════════════════════════
 // POINTER LOCK
 // ═══════════════════════════════════════════════════════════════
-canvas.addEventListener('click', () => {
-  if (game.state === 'locked') {
-    canvas.requestPointerLock();
-  }
+// Overlay sits on top of the canvas, so attach the click here
+overlay.addEventListener('click', () => {
+  canvas.requestPointerLock();
 });
 
 document.addEventListener('pointerlockchange', () => {
