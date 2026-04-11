@@ -10,6 +10,7 @@
     :root {
       --red:    #e94560;
       --blue:   #a8dadc;
+      --green:  #5a9449;
       --dark:   #0d0d1a;
       --mid:    #16213e;
       --panel:  #0f1f3d;
@@ -133,16 +134,18 @@
       transform: translateY(-6px);
       box-shadow: 0 20px 50px rgba(0,0,0,0.5);
     }
-    .game-card.red:hover  { border-color: var(--red);  box-shadow: 0 20px 50px rgba(233,69,96,.22); }
-    .game-card.blue:hover { border-color: var(--blue); box-shadow: 0 20px 50px rgba(168,218,220,.18); }
+    .game-card.red:hover   { border-color: var(--red);   box-shadow: 0 20px 50px rgba(233,69,96,.22); }
+    .game-card.blue:hover  { border-color: var(--blue);  box-shadow: 0 20px 50px rgba(168,218,220,.18); }
+    .game-card.green:hover { border-color: var(--green); box-shadow: 0 20px 50px rgba(90,148,73,.25); }
 
     /* top glow strip */
     .card-glow {
       height: 3px;
       width: 100%;
     }
-    .red  .card-glow { background: linear-gradient(90deg, transparent 10%, var(--red), transparent 90%); }
-    .blue .card-glow { background: linear-gradient(90deg, transparent 10%, var(--blue), transparent 90%); }
+    .red   .card-glow { background: linear-gradient(90deg, transparent 10%, var(--red),   transparent 90%); }
+    .blue  .card-glow { background: linear-gradient(90deg, transparent 10%, var(--blue),  transparent 90%); }
+    .green .card-glow { background: linear-gradient(90deg, transparent 10%, var(--green), transparent 90%); }
 
     /* preview canvas area */
     .card-preview {
@@ -163,8 +166,9 @@
       filter: drop-shadow(0 0 24px currentColor);
       animation: float 3.5s ease-in-out infinite;
     }
-    .red  .card-icon { color: var(--red); }
-    .blue .card-icon { color: var(--blue); }
+    .red   .card-icon { color: var(--red); }
+    .blue  .card-icon { color: var(--blue); }
+    .green .card-icon { color: var(--green); }
 
     @keyframes float {
       0%, 100% { transform: translateY(0);    }
@@ -197,8 +201,9 @@
       text-transform: uppercase;
       font-weight: 700;
     }
-    .red  .card-tag { color: var(--red); }
-    .blue .card-tag { color: var(--blue); }
+    .red   .card-tag { color: var(--red); }
+    .blue  .card-tag { color: var(--blue); }
+    .green .card-tag { color: var(--green); }
 
     .card-title {
       font-size: 1.55rem;
@@ -227,8 +232,9 @@
       letter-spacing: 0.5px;
       font-weight: 600;
     }
-    .red  .pill { background: rgba(233,69,96,.14);  color: var(--red);  border: 1px solid rgba(233,69,96,.3);  }
-    .blue .pill { background: rgba(168,218,220,.1); color: var(--blue); border: 1px solid rgba(168,218,220,.25); }
+    .red   .pill { background: rgba(233,69,96,.14);  color: var(--red);   border: 1px solid rgba(233,69,96,.3);   }
+    .blue  .pill { background: rgba(168,218,220,.1); color: var(--blue);  border: 1px solid rgba(168,218,220,.25); }
+    .green .pill { background: rgba(90,148,73,.14);  color: var(--green); border: 1px solid rgba(90,148,73,.3);   }
 
     /* play button */
     .card-btn {
@@ -243,8 +249,9 @@
       transition: filter 0.2s, transform 0.15s;
     }
     .card-btn:hover { filter: brightness(1.15); transform: scale(1.03); }
-    .red  .card-btn { background: var(--red);  color: #fff; }
-    .blue .card-btn { background: var(--blue); color: var(--dark); }
+    .red   .card-btn { background: var(--red);   color: #fff; }
+    .blue  .card-btn { background: var(--blue);  color: var(--dark); }
+    .green .card-btn { background: var(--green); color: #fff; }
 
     /* ── Footer ──────────────────────────────────────────────── */
     footer {
@@ -331,24 +338,25 @@
       </a>
 
       <!-- Exploration card -->
-      <a class="game-card" href="exploration.html" style="--accent:#5a9449">
-        <div class="card-glow" style="background:linear-gradient(90deg,transparent 10%,#5a9449,transparent 90%)"></div>
+      <a class="game-card green" href="exploration.html">
+        <div class="card-glow"></div>
         <div class="card-preview">
-          <div class="card-icon" style="color:#5a9449">🌿</div>
+          <div class="card-icon">🌿</div>
         </div>
         <div class="card-body">
-          <span class="card-tag" style="color:#5a9449">Adventure · Exploration</span>
+          <span class="card-tag">Adventure · Exploration</span>
           <h2 class="card-title">Explorer</h2>
           <p class="card-desc">
-            A top-down 2D exploration game. Roam an open grassy world — more to
-            discover as the world grows.
+            A top-down 2D village world. Roam grassy fields, explore a dense forest,
+            chat with villagers outside their homes, and sprint across the land.
           </p>
           <div class="card-features">
-            <span class="pill" style="background:rgba(90,148,73,.14);color:#5a9449;border:1px solid rgba(90,148,73,.3)">Open world</span>
-            <span class="pill" style="background:rgba(90,148,73,.14);color:#5a9449;border:1px solid rgba(90,148,73,.3)">WASD movement</span>
-            <span class="pill" style="background:rgba(90,148,73,.14);color:#5a9449;border:1px solid rgba(90,148,73,.3)">Mini-map</span>
+            <span class="pill">Village &amp; forest</span>
+            <span class="pill">Villager dialogue</span>
+            <span class="pill">Sprint + mini-map</span>
+            <span class="pill">WASD</span>
           </div>
-          <div class="card-btn" style="background:#5a9449;color:#fff">Play Now</div>
+          <div class="card-btn">Play Now</div>
         </div>
       </a>
 
