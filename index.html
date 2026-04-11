@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Toby's Game Hub</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red:    #e94560;
+      --blue:   #a8dadc;
+      --dark:   #0d0d1a;
+      --mid:    #16213e;
+      --panel:  #0f1f3d;
+      --border: #1a3a6a;
+      --text:   #e8eaf6;
+      --muted:  #7986a8;
+    }
+
+    /* ── Page base ───────────────────────────────────────────── */
+    html, body {
+      height: 100%;
+    }
+    body {
+      background: var(--dark);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Starfield background ────────────────────────────────── */
+    #stars {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Layout wrapper ──────────────────────────────────────── */
+    .page {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── Header / Hero ───────────────────────────────────────── */
+    header {
+      padding: 3.5rem 2rem 2.5rem;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--blue);
+      border: 1px solid var(--blue);
+      border-radius: 20px;
+      padding: 0.28rem 1rem;
+      margin-bottom: 1.2rem;
+      opacity: 0.85;
+    }
+
+    h1 {
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      font-weight: 800;
+      letter-spacing: 2px;
+      line-height: 1.1;
+    }
+    h1 .accent { color: var(--red); }
+
+    .hero-sub {
+      margin-top: 0.9rem;
+      font-size: 1.05rem;
+      color: var(--muted);
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.6;
+    }
+
+    /* ── Neon divider ────────────────────────────────────────── */
+    .divider {
+      width: 80px;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--red), var(--blue), transparent);
+      margin: 2rem auto 0;
+      border-radius: 2px;
+    }
+
+    /* ── Games section ───────────────────────────────────────── */
+    .games-section {
+      padding: 2.5rem 1.5rem 4rem;
+      flex: 1;
+    }
+
+    .section-label {
+      text-align: center;
+      font-size: 0.65rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 2.4rem;
+    }
+
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.8rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* ── Game card ───────────────────────────────────────────── */
+    .game-card {
+      position: relative;
+      background: var(--mid);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .game-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+    .game-card.red:hover  { border-color: var(--red);  box-shadow: 0 20px 50px rgba(233,69,96,.22); }
+    .game-card.blue:hover { border-color: var(--blue); box-shadow: 0 20px 50px rgba(168,218,220,.18); }
+
+    /* top glow strip */
+    .card-glow {
+      height: 3px;
+      width: 100%;
+    }
+    .red  .card-glow { background: linear-gradient(90deg, transparent 10%, var(--red), transparent 90%); }
+    .blue .card-glow { background: linear-gradient(90deg, transparent 10%, var(--blue), transparent 90%); }
+
+    /* preview canvas area */
+    .card-preview {
+      position: relative;
+      height: 190px;
+      background: var(--dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* big emoji / icon backdrop */
+    .card-icon {
+      font-size: 6rem;
+      line-height: 1;
+      user-select: none;
+      filter: drop-shadow(0 0 24px currentColor);
+      animation: float 3.5s ease-in-out infinite;
+    }
+    .red  .card-icon { color: var(--red); }
+    .blue .card-icon { color: var(--blue); }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0);    }
+      50%       { transform: translateY(-10px); }
+    }
+
+    /* decorative pixel grid in preview */
+    .card-preview::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    /* card body */
+    .card-body {
+      padding: 1.4rem 1.5rem 1.6rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      flex: 1;
+    }
+
+    .card-tag {
+      font-size: 0.6rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .red  .card-tag { color: var(--red); }
+    .blue .card-tag { color: var(--blue); }
+
+    .card-title {
+      font-size: 1.55rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+
+    .card-desc {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.6;
+      flex: 1;
+    }
+
+    /* feature pills */
+    .card-features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.2rem;
+    }
+    .pill {
+      font-size: 0.65rem;
+      padding: 0.2rem 0.65rem;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+    .red  .pill { background: rgba(233,69,96,.14);  color: var(--red);  border: 1px solid rgba(233,69,96,.3);  }
+    .blue .pill { background: rgba(168,218,220,.1); color: var(--blue); border: 1px solid rgba(168,218,220,.25); }
+
+    /* play button */
+    .card-btn {
+      margin-top: 1.1rem;
+      padding: 0.7rem 1.4rem;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-align: center;
+      transition: filter 0.2s, transform 0.15s;
+    }
+    .card-btn:hover { filter: brightness(1.15); transform: scale(1.03); }
+    .red  .card-btn { background: var(--red);  color: #fff; }
+    .blue .card-btn { background: var(--blue); color: var(--dark); }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 1.4rem 1rem 2rem;
+      font-size: 0.75rem;
+      color: var(--border);
+      letter-spacing: 1px;
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--blue); }
+
+    /* ── Responsive tweaks ───────────────────────────────────── */
+    @media (max-width: 500px) {
+      header { padding: 2.5rem 1rem 1.8rem; }
+      .games-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+
+<div class="page">
+
+  <!-- ── Hero ─────────────────────────────────────── -->
+  <header>
+    <div class="hero-badge">Game Hub</div>
+    <h1>Toby's<br><span class="accent">Arcade</span></h1>
+    <p class="hero-sub">Two handcrafted browser games — no installs, no accounts. Just open and play.</p>
+    <div class="divider"></div>
+  </header>
+
+  <!-- ── Games ─────────────────────────────────────── -->
+  <section class="games-section">
+    <p class="section-label">Choose your game</p>
+
+    <div class="games-grid">
+
+      <!-- Shooter card -->
+      <a class="game-card red" href="shooter.html">
+        <div class="card-glow"></div>
+        <div class="card-preview">
+          <div class="card-icon">🔫</div>
+        </div>
+        <div class="card-body">
+          <span class="card-tag">Action · Wave Shooter</span>
+          <h2 class="card-title">Pixel Shooter</h2>
+          <p class="card-desc">
+            Top-down arena shooter. Survive endless enemy waves — grunts, chargers,
+            tanks, and sharpshooters — as the difficulty ramps wave after wave.
+          </p>
+          <div class="card-features">
+            <span class="pill">4 enemy types</span>
+            <span class="pill">Wave-based</span>
+            <span class="pill">Pixel art</span>
+            <span class="pill">Mouse + WASD</span>
+          </div>
+          <div class="card-btn">Play Now</div>
+        </div>
+      </a>
+
+      <!-- Tic Tac Toe card -->
+      <a class="game-card blue" href="tictactoe.html">
+        <div class="card-glow"></div>
+        <div class="card-preview">
+          <div class="card-icon">⭕</div>
+        </div>
+        <div class="card-body">
+          <span class="card-tag">Strategy · Board Game</span>
+          <h2 class="card-title">Tic Tac Toe</h2>
+          <p class="card-desc">
+            Classic noughts &amp; crosses, reimagined. Play locally or face off against
+            six AI opponents — from chaotic beginner to a truly unbeatable oracle.
+          </p>
+          <div class="card-features">
+            <span class="pill">6 AI opponents</span>
+            <span class="pill">3×3 &amp; 5×5</span>
+            <span class="pill">2-Player</span>
+            <span class="pill">Minimax AI</span>
+          </div>
+          <div class="card-btn">Play Now</div>
+        </div>
+      </a>
+
+    </div>
+  </section>
+
+  <footer>
+    Built with Claude Code &nbsp;·&nbsp; <a href="https://github.com/tobyhome12345-commits/ClaudeCodeTest" target="_blank">GitHub</a>
+  </footer>
+
+</div>
+
+<script>
+// ── Animated starfield ──────────────────────────────────────────
+(function () {
+  const canvas = document.getElementById('stars');
+  const ctx    = canvas.getContext('2d');
+  let W, H, stars;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function makeStars(n) {
+    return Array.from({ length: n }, () => ({
+      x:    Math.random() * W,
+      y:    Math.random() * H,
+      r:    Math.random() * 1.2 + 0.2,
+      spd:  Math.random() * 0.25 + 0.05,
+      alpha: Math.random() * 0.6 + 0.1,
+      dA:   (Math.random() - 0.5) * 0.008
+    }));
+  }
+
+  function init() {
+    resize();
+    stars = makeStars(180);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    for (const s of stars) {
+      s.alpha = Math.max(0.05, Math.min(0.85, s.alpha + s.dA));
+      if (s.alpha <= 0.05 || s.alpha >= 0.85) s.dA *= -1;
+      s.y += s.spd;
+      if (s.y > H) { s.y = 0; s.x = Math.random() * W; }
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(168,218,220,${s.alpha})`;
+      ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', () => { resize(); stars = makeStars(180); });
+  init();
+  draw();
+})();
+</script>
+
+</body>
+</html>
