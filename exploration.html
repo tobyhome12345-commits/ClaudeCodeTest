@@ -12,7 +12,7 @@
       height: 100vh; overflow: hidden;
       font-family: 'Segoe UI', system-ui, sans-serif;
     }
-    canvas { display: block; image-rendering: pixelated; }
+    canvas { display: block; }
     #hub-btn {
       position: fixed; top: 14px; left: 14px;
       background: rgba(13,13,26,0.85); color: #a8dadc;
@@ -25,30 +25,78 @@
     #hub-btn:hover { border-color: #a8dadc; color: #fff; }
     #interact-prompt {
       position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
-      background: rgba(0,0,0,0.72); color: #fff;
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 24px; padding: 7px 20px;
-      font-size: 0.82rem; letter-spacing: 1.5px; text-transform: uppercase;
-      pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 10;
+      background: rgba(0,0,0,0.75); color: #fff;
+      border: 1px solid rgba(255,255,255,0.2); border-radius: 24px;
+      padding: 7px 20px; font-size: 0.82rem; letter-spacing: 1.2px;
+      text-transform: uppercase; pointer-events: none;
+      opacity: 0; transition: opacity 0.15s; z-index: 10;
+      white-space: nowrap;
     }
     #interact-prompt.show { opacity: 1; }
+    #dialog-box {
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+      width: min(520px, 90vw);
+      background: rgba(10,15,30,0.96); color: #e8eaf6;
+      border: 2px solid #3a6a9a; border-radius: 14px;
+      padding: 18px 24px 14px; font-size: 0.93rem; line-height: 1.6;
+      display: none; z-index: 20; pointer-events: none;
+    }
+    #dialog-box.show { display: block; }
+    #dialog-name {
+      font-weight: 700; font-size: 0.78rem; letter-spacing: 2px;
+      text-transform: uppercase; color: #a8dadc; margin-bottom: 6px;
+    }
+    #dialog-text { color: #dde; }
+    #dialog-continue {
+      margin-top: 10px; font-size: 0.72rem; color: #556; letter-spacing: 1px;
+      text-transform: uppercase; text-align: right;
+    }
+    #sprint-bar {
+      position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 8px; z-index: 10;
+      opacity: 0; transition: opacity 0.3s;
+    }
+    #sprint-bar.show { opacity: 1; }
+    #sprint-label { font-size: 0.65rem; color: #aaa; letter-spacing: 1.5px; text-transform: uppercase; }
+    #sprint-track {
+      width: 100px; height: 6px; background: rgba(255,255,255,0.1);
+      border-radius: 3px; overflow: hidden;
+    }
+    #sprint-fill {
+      height: 100%; width: 100%; background: #5ad; border-radius: 3px;
+      transition: background 0.2s;
+    }
   </style>
 </head>
 <body>
 <a id="hub-btn" href="index.html">&#8592; Hub</a>
-<div id="interact-prompt" id="prompt"></div>
+<div id="interact-prompt"></div>
+<div id="dialog-box">
+  <div id="dialog-name"></div>
+  <div id="dialog-text"></div>
+  <div id="dialog-continue">F — continue</div>
+</div>
+<div id="sprint-bar">
+  <span id="sprint-label">Stamina</span>
+  <div id="sprint-track"><div id="sprint-fill"></div></div>
+</div>
 <canvas id="canvas"></canvas>
 
 <script>
 // ─── Constants ───────────────────────────────────────────────────────────────
-const TILE         = 32;
-const MAP_COLS     = 80;
-const MAP_ROWS     = 80;
-const PLAYER_R     = 10;
-const PLAYER_SPEED = 180;
-const WALL_T       = 9;
-const DOOR_W       = TILE;
-const INTERACT_DIST = 52;
+const TILE          = 32;
+const MAP_COLS      = 80;
+const MAP_ROWS      = 80;
+const PLAYER_R      = 9;
+const PLAYER_SPEED  = 170;
+const SPRINT_SPEED  = 310;
+const STAMINA_MAX   = 1;       // seconds of full sprint
+const STAMINA_DRAIN = 1 / 2.2; // depletes in 2.2s
+const STAMINA_REGEN = 1 / 4;   // refills in 4s
+const WALL_T        = 9;
+const DOOR_W        = TILE;
+const INTERACT_DIST = 54;
+const TALK_DIST     = 48;
 
 // ─── Seeded RNG ──────────────────────────────────────────────────────────────
 function mulberry32(seed) {
@@ -72,7 +120,6 @@ const GRASS_COLORS = ['#4a7c3f','#5a9449','#3a6332','#3d6b35'];
 const map = Array.from({ length: MAP_ROWS }, () =>
   Array.from({ length: MAP_COLS }, () => Math.floor(Math.random() * 4))
 );
-// Blob patches for variety
 (function () {
   for (let p = 0; p < 200; p++) {
     const cr = Math.floor(Math.random() * MAP_ROWS);
@@ -83,12 +130,20 @@ const map = Array.from({ length: MAP_ROWS }, () =>
       for (let dc = -sz; dc <= sz; dc++)
         if (dr*dr+dc*dc <= sz*sz) {
           const nr = cr+dr, nc = cc+dc;
-          if (nr >= 0 && nr < MAP_ROWS && nc >= 0 && nc < MAP_COLS) map[nr][nc] = v;
+          if (nr>=0 && nr<MAP_ROWS && nc>=0 && nc<MAP_COLS) map[nr][nc] = v;
         }
   }
 })();
 
-// Pre-render grass to offscreen canvas
+// Forest zone: top-right quadrant (cols 50-79, rows 0-35)
+const FOREST_C0 = 50, FOREST_R0 = 0, FOREST_C1 = 79, FOREST_R1 = 35;
+(function () {
+  // Darken forest tiles
+  for (let r = FOREST_R0; r <= FOREST_R1; r++)
+    for (let c = FOREST_C0; c <= FOREST_C1; c++)
+      map[r][c] = 2; // dark grass
+})();
+
 const mapCanvas = document.createElement('canvas');
 mapCanvas.width  = MAP_COLS * TILE;
 mapCanvas.height = MAP_ROWS * TILE;
@@ -102,6 +157,11 @@ const mctx = mapCanvas.getContext('2d');
       mctx.lineWidth = 0.5;
       mctx.strokeRect(c*TILE, r*TILE, TILE, TILE);
     }
+  // Forest floor: darker overlay
+  mctx.fillStyle = 'rgba(0,30,0,0.28)';
+  mctx.fillRect(FOREST_C0*TILE, FOREST_R0*TILE,
+    (FOREST_C1-FOREST_C0+1)*TILE, (FOREST_R1-FOREST_R0+1)*TILE);
+
   const rng = mulberry32(77);
   for (let i = 0; i < 1200; i++) {
     const x = rng() * MAP_COLS * TILE;
@@ -110,13 +170,60 @@ const mctx = mapCanvas.getContext('2d');
     const lean = (rng() - 0.5) * 5;
     mctx.strokeStyle = rng() > 0.5 ? '#2e5227' : '#6aab5a';
     mctx.lineWidth = 1;
-    mctx.beginPath(); mctx.moveTo(x, y); mctx.lineTo(x + lean, y - h); mctx.stroke();
+    mctx.beginPath(); mctx.moveTo(x, y); mctx.lineTo(x+lean, y-h); mctx.stroke();
   }
 })();
 
+// ─── Trees ───────────────────────────────────────────────────────────────────
+// Dense in forest zone, sparse elsewhere
+const trees = [];
+const trng = mulberry32(123);
+function tryAddTree(tx, ty, minGap) {
+  const wx = tx * TILE + TILE/2, wy = ty * TILE + TILE/2;
+  for (const t of trees) if (Math.hypot(t.x-wx, t.y-wy) < minGap) return;
+  const r = 10 + trng() * 6;
+  trees.push({ x: wx, y: wy, r, canopyR: r * 2.2 + trng() * 8 });
+}
+// Forest trees — dense
+for (let i = 0; i < 220; i++) {
+  const c = FOREST_C0 + Math.floor(trng() * (FOREST_C1 - FOREST_C0 + 1));
+  const r = FOREST_R0 + Math.floor(trng() * (FOREST_R1 - FOREST_R0 + 1));
+  tryAddTree(c, r, 38);
+}
+// Scattered trees elsewhere
+for (let i = 0; i < 60; i++) {
+  const c = Math.floor(trng() * MAP_COLS);
+  const r = Math.floor(trng() * MAP_ROWS);
+  if (c >= FOREST_C0-2 && r <= FOREST_R1+2) continue;
+  tryAddTree(c, r, 70);
+}
+
+function drawTree(ctx2, tree) {
+  const { x, y, r, canopyR } = tree;
+  // Shadow
+  ctx2.save(); ctx2.globalAlpha = 0.18;
+  ctx2.fillStyle = '#000';
+  ctx2.beginPath();
+  ctx2.ellipse(x+4, y+r*0.9, canopyR*0.7, canopyR*0.28, 0, 0, Math.PI*2);
+  ctx2.fill(); ctx2.restore();
+  // Trunk
+  ctx2.fillStyle = '#5c3a1e';
+  ctx2.fillRect(x - 4, y - r*0.3, 8, r*0.9);
+  // Canopy layers
+  for (let layer = 2; layer >= 0; layer--) {
+    const ly = y - r*0.4 - layer * canopyR * 0.22;
+    const lr = canopyR * (1 - layer * 0.18);
+    const g = ctx2.createRadialGradient(x - lr*0.2, ly - lr*0.2, 1, x, ly, lr);
+    g.addColorStop(0, layer === 0 ? '#6ab84a' : '#4e9636');
+    g.addColorStop(1, '#2c6018');
+    ctx2.beginPath(); ctx2.arc(x, ly, lr, 0, Math.PI*2);
+    ctx2.fillStyle = g; ctx2.fill();
+    ctx2.strokeStyle = 'rgba(0,0,0,0.15)'; ctx2.lineWidth = 1;
+    ctx2.stroke();
+  }
+}
+
 // ─── Houses ──────────────────────────────────────────────────────────────────
-// Each house: 4×3 tiles. Door centred in south wall.
-// wallColor, roofColor vary per house.
 const HOUSE_DEFS = [
   { tx:  5, ty:  5, wallColor: '#c9935a', roofColor: '#7a3b1e' },
   { tx: 48, ty:  6, wallColor: '#b8a070', roofColor: '#5c3b18' },
@@ -125,39 +232,140 @@ const HOUSE_DEFS = [
   { tx: 36, ty: 10, wallColor: '#d4a96a', roofColor: '#8a4820' },
   { tx: 10, ty: 36, wallColor: '#bf9355', roofColor: '#6e3a16' },
 ];
-
 const houses = HOUSE_DEFS.map(d => ({
-  x: d.tx * TILE,
-  y: d.ty * TILE,
-  w: 4 * TILE,
-  h: 3 * TILE,
-  wallColor: d.wallColor,
-  roofColor: d.roofColor,
-  doorOpen: false,
+  x: d.tx*TILE, y: d.ty*TILE, w: 4*TILE, h: 3*TILE,
+  wallColor: d.wallColor, roofColor: d.roofColor, doorOpen: false,
 }));
 
-// Wall rects for a house (for collision)
 function getHouseWalls(house) {
   const { x, y, w, h, doorOpen } = house;
-  const ds = w / 2 - DOOR_W / 2;   // door left offset from house left
+  const ds = w/2 - DOOR_W/2;
   const rects = [
-    { x,           y,           w,              h: WALL_T },  // north
-    { x,           y,           w: WALL_T,      h          },  // west
-    { x: x+w-WALL_T, y,         w: WALL_T,      h          },  // east
-    { x,           y: y+h-WALL_T, w: ds,         h: WALL_T },  // south-left
-    { x: x+ds+DOOR_W, y: y+h-WALL_T, w: w-ds-DOOR_W, h: WALL_T }, // south-right
+    { x, y, w, h: WALL_T },
+    { x, y, w: WALL_T, h },
+    { x: x+w-WALL_T, y, w: WALL_T, h },
+    { x, y: y+h-WALL_T, w: ds, h: WALL_T },
+    { x: x+ds+DOOR_W, y: y+h-WALL_T, w: w-ds-DOOR_W, h: WALL_T },
   ];
   if (!doorOpen) rects.push({ x: x+ds, y: y+h-WALL_T, w: DOOR_W, h: WALL_T });
   return rects;
 }
+function doorCenter(house) { return { x: house.x+house.w/2, y: house.y+house.h }; }
 
-// Door world position (centre of opening, south face)
-function doorCenter(house) {
-  return { x: house.x + house.w / 2, y: house.y + house.h };
+// ─── Villagers ───────────────────────────────────────────────────────────────
+const VILLAGER_DEFS = [
+  { tx: 20, ty: 20, name: 'Old Maren',  skinColor: '#d4956a',
+    lines: ['These lands have been peaceful for many years.',
+            'The forest to the north grows darker each season though.',
+            'Best not to venture too deep without a torch.'] },
+  { tx: 42, ty: 42, name: 'Finn',       skinColor: '#e8b88a',
+    lines: ['Have you seen my sheep? Three of them wandered off again.',
+            'The fence by the east farm needs mending, I suspect.',
+            'If you find them, do let me know!'] },
+  { tx: 17, ty:  9, name: 'Brix',       skinColor: '#c07850',
+    lines: ['I built most of these houses myself, you know.',
+            'Good solid wood from the forest. Though I do not go there alone.',
+            'Strange sounds at night...'] },
+  { tx: 60, ty: 22, name: 'Lena',       skinColor: '#f0c8a0',
+    lines: ['The berries are ripe near the forest edge.',
+            'Just mind the roots — they trip you up something awful.',
+            'Welcome to our little village, by the way!'] },
+  { tx: 30, ty: 55, name: 'Corin',      skinColor: '#a06040',
+    lines: ['I heard something big moving in the trees last night.',
+            'Probably just a deer. Probably.',
+            'Anyway, nice weather we are having.'] },
+];
+
+const villagers = VILLAGER_DEFS.map(d => ({
+  x: d.tx*TILE, y: d.ty*TILE,
+  name: d.name, skinColor: d.skinColor, lines: d.lines,
+  lineIndex: 0,
+  walkAngle: Math.random() * Math.PI * 2,
+  walkTimer: 0,
+  walkDir: { x: 0, y: 0 },
+  idle: true,
+  idleTimer: 1 + Math.random() * 3,
+}));
+
+// Villager wander update
+function updateVillagers(dt) {
+  for (const v of villagers) {
+    if (dialogVillager === v) continue; // freeze while talking
+    v.walkTimer -= dt;
+    if (v.idle) {
+      v.idleTimer -= dt;
+      if (v.idleTimer <= 0) {
+        v.idle = false;
+        v.walkAngle += (Math.random()-0.5) * Math.PI;
+        v.walkDir = { x: Math.cos(v.walkAngle), y: Math.sin(v.walkAngle) };
+        v.walkTimer = 0.6 + Math.random() * 1.2;
+      }
+    } else {
+      const spd = 40;
+      const nx = v.x + v.walkDir.x * spd * dt;
+      const ny = v.y + v.walkDir.y * spd * dt;
+      const half = 9;
+      if (nx > half && nx < MAP_COLS*TILE-half) v.x = nx;
+      if (ny > half && ny < MAP_ROWS*TILE-half) v.y = ny;
+      if (v.walkTimer <= 0) {
+        v.idle = true;
+        v.idleTimer = 1.5 + Math.random() * 3;
+      }
+    }
+  }
+}
+
+function drawVillager(ctx2, v) {
+  const x = v.x, y = v.y;
+  const isMoving = !v.idle;
+  const wobble = isMoving ? Math.sin(Date.now() / 150) * 2 : 0;
+
+  // Shadow
+  ctx2.save(); ctx2.globalAlpha = 0.2;
+  ctx2.fillStyle = '#000';
+  ctx2.beginPath();
+  ctx2.ellipse(x, y+11, 8, 3, 0, 0, Math.PI*2);
+  ctx2.fill(); ctx2.restore();
+
+  // Legs
+  ctx2.strokeStyle = '#4466aa';
+  ctx2.lineWidth = 4;
+  ctx2.lineCap = 'round';
+  ctx2.beginPath(); ctx2.moveTo(x-3, y+2); ctx2.lineTo(x-3+wobble, y+10); ctx2.stroke();
+  ctx2.beginPath(); ctx2.moveTo(x+3, y+2); ctx2.lineTo(x+3-wobble, y+10); ctx2.stroke();
+
+  // Body
+  ctx2.fillStyle = '#4488cc';
+  ctx2.beginPath();
+  ctx2.roundRect(x-6, y-8, 12, 12, 3);
+  ctx2.fill();
+
+  // Arms
+  ctx2.strokeStyle = v.skinColor;
+  ctx2.lineWidth = 3;
+  ctx2.beginPath(); ctx2.moveTo(x-6, y-6); ctx2.lineTo(x-10, y-1+wobble); ctx2.stroke();
+  ctx2.beginPath(); ctx2.moveTo(x+6, y-6); ctx2.lineTo(x+10, y-1-wobble); ctx2.stroke();
+
+  // Head
+  ctx2.fillStyle = v.skinColor;
+  ctx2.beginPath(); ctx2.arc(x, y-13, 7, 0, Math.PI*2); ctx2.fill();
+  ctx2.strokeStyle = 'rgba(0,0,0,0.2)'; ctx2.lineWidth = 1; ctx2.stroke();
+
+  // Eyes
+  ctx2.fillStyle = '#333';
+  ctx2.beginPath(); ctx2.arc(x-2.5, y-14, 1.2, 0, Math.PI*2); ctx2.fill();
+  ctx2.beginPath(); ctx2.arc(x+2.5, y-14, 1.2, 0, Math.PI*2); ctx2.fill();
+
+  // Name tag
+  ctx2.fillStyle = 'rgba(0,0,0,0.55)';
+  const nameW = ctx2.measureText(v.name).width + 10;
+  ctx2.beginPath(); ctx2.roundRect(x - nameW/2, y-28, nameW, 13, 4); ctx2.fill();
+  ctx2.fillStyle = '#ddd'; ctx2.font = '9px sans-serif'; ctx2.textAlign = 'center';
+  ctx2.fillText(v.name, x, y-18);
+  ctx2.textAlign = 'left';
 }
 
 // ─── Farms ───────────────────────────────────────────────────────────────────
-// Each farm is a fenced 8×6 tile area with 3 crop rows inside.
 const FARM_DEFS = [
   { tx: 13, ty:  8 },
   { tx: 20, ty: 28 },
@@ -165,265 +373,273 @@ const FARM_DEFS = [
   { tx: 28, ty: 46 },
   { tx: 55, ty: 30 },
 ];
+const farms = FARM_DEFS.map(d => ({ x: d.tx*TILE, y: d.ty*TILE, w: 8*TILE, h: 6*TILE }));
 
-const farms = FARM_DEFS.map(d => ({
-  x: d.tx * TILE,
-  y: d.ty * TILE,
-  w: 8 * TILE,
-  h: 6 * TILE,
-}));
-
-// ─── Draw helpers ────────────────────────────────────────────────────────────
 function drawFarm(ctx2, farm) {
   const { x, y, w, h } = farm;
-  const pad = TILE;  // inner padding inside fence
-
-  // Soil background (inside fence)
+  const pad = TILE;
   ctx2.fillStyle = '#6b4226';
-  ctx2.fillRect(x + pad, y + pad, w - pad*2, h - pad*2);
-
-  // Crop rows (3 rows of plants)
-  const innerX = x + pad + 8;
-  const innerW = w - pad*2 - 16;
-  const rowY = [y + pad + 14, y + pad + (h - pad*2)/2 - 6, y + h - pad - 22];
-  for (const ry of rowY) {
-    // dirt strip for this row
+  ctx2.fillRect(x+pad, y+pad, w-pad*2, h-pad*2);
+  const innerX = x+pad+8, innerW = w-pad*2-16;
+  for (const ry of [y+pad+14, y+pad+(h-pad*2)/2-6, y+h-pad-22]) {
     ctx2.fillStyle = '#7a4e2c';
-    ctx2.fillRect(innerX, ry - 4, innerW, 18);
-    // plants
-    for (let px = innerX + 8; px < innerX + innerW - 8; px += 18) {
-      drawCrop(ctx2, px, ry + 5);
-    }
+    ctx2.fillRect(innerX, ry-4, innerW, 18);
+    for (let px = innerX+8; px < innerX+innerW-8; px += 18) drawCrop(ctx2, px, ry+5);
   }
-
-  // Fence posts & rails
-  const postColor = '#8B5E3C';
-  const railColor = '#a07040';
-  const postW = 6, postH = 14;
-
-  // Draw all four fence lines (top, bottom, left, right)
-  // Top & Bottom rails
-  for (const fy of [y + 4, y + h - postH]) {
-    ctx2.fillStyle = railColor;
-    ctx2.fillRect(x + postW/2, fy + postH/2, w - postW, 4);
+  const postW = 6, postH = 14, postColor = '#8B5E3C', railColor = '#a07040';
+  for (const fy of [y+4, y+h-postH]) {
+    ctx2.fillStyle = railColor; ctx2.fillRect(x+postW/2, fy+postH/2, w-postW, 4);
   }
-  // Left & Right rails
-  for (const fx of [x + 4, x + w - postW]) {
-    ctx2.fillStyle = railColor;
-    ctx2.fillRect(fx + postW/2, y + postH/2, 4, h - postH);
+  for (const fx of [x+4, x+w-postW]) {
+    ctx2.fillStyle = railColor; ctx2.fillRect(fx+postW/2, y+postH/2, 4, h-postH);
   }
-
-  // Posts — every 2 tiles along perimeter
-  const postSpacingX = 2 * TILE;
-  const postSpacingY = 2 * TILE;
-  for (let px = x; px <= x + w; px += postSpacingX) {
+  for (let px = x; px <= x+w; px += 2*TILE) {
     ctx2.fillStyle = postColor;
-    ctx2.fillRect(px - postW/2, y,     postW, postH);
-    ctx2.fillRect(px - postW/2, y+h-postH, postW, postH);
+    ctx2.fillRect(px-postW/2, y, postW, postH);
+    ctx2.fillRect(px-postW/2, y+h-postH, postW, postH);
   }
-  for (let py = y + postSpacingY; py < y + h; py += postSpacingY) {
+  for (let py = y+2*TILE; py < y+h; py += 2*TILE) {
     ctx2.fillStyle = postColor;
-    ctx2.fillRect(x - postW/2,     py - postH/2, postW, postH);
-    ctx2.fillRect(x+w - postW/2,   py - postH/2, postW, postH);
+    ctx2.fillRect(x-postW/2, py-postH/2, postW, postH);
+    ctx2.fillRect(x+w-postW/2, py-postH/2, postW, postH);
   }
 }
 
 function drawCrop(ctx2, x, y) {
-  // Small plant: stem + two leaves
-  ctx2.strokeStyle = '#3a8c2a';
-  ctx2.lineWidth = 1.5;
-  ctx2.beginPath(); ctx2.moveTo(x, y); ctx2.lineTo(x, y - 10); ctx2.stroke();
-  ctx2.strokeStyle = '#55b040';
-  ctx2.lineWidth = 1;
-  ctx2.beginPath(); ctx2.moveTo(x, y - 5); ctx2.lineTo(x - 5, y - 9); ctx2.stroke();
-  ctx2.beginPath(); ctx2.moveTo(x, y - 5); ctx2.lineTo(x + 5, y - 9); ctx2.stroke();
+  ctx2.strokeStyle = '#3a8c2a'; ctx2.lineWidth = 1.5;
+  ctx2.beginPath(); ctx2.moveTo(x, y); ctx2.lineTo(x, y-10); ctx2.stroke();
+  ctx2.strokeStyle = '#55b040'; ctx2.lineWidth = 1;
+  ctx2.beginPath(); ctx2.moveTo(x, y-5); ctx2.lineTo(x-5, y-9); ctx2.stroke();
+  ctx2.beginPath(); ctx2.moveTo(x, y-5); ctx2.lineTo(x+5, y-9); ctx2.stroke();
 }
 
+// ─── House drawing ───────────────────────────────────────────────────────────
 function drawHouseFloor(ctx2, house) {
   const { x, y, w, h } = house;
-  // Interior floor (wood planks feel)
   ctx2.fillStyle = '#c8a86a';
-  ctx2.fillRect(x + WALL_T, y + WALL_T, w - WALL_T*2, h - WALL_T*2);
-  // plank lines
-  ctx2.strokeStyle = 'rgba(0,0,0,0.1)';
-  ctx2.lineWidth = 1;
-  for (let ly = y + WALL_T + 12; ly < y + h - WALL_T; ly += 12) {
-    ctx2.beginPath(); ctx2.moveTo(x + WALL_T, ly); ctx2.lineTo(x + w - WALL_T, ly); ctx2.stroke();
+  ctx2.fillRect(x+WALL_T, y+WALL_T, w-WALL_T*2, h-WALL_T*2);
+  ctx2.strokeStyle = 'rgba(0,0,0,0.1)'; ctx2.lineWidth = 1;
+  for (let ly = y+WALL_T+12; ly < y+h-WALL_T; ly += 12) {
+    ctx2.beginPath(); ctx2.moveTo(x+WALL_T, ly); ctx2.lineTo(x+w-WALL_T, ly); ctx2.stroke();
   }
 }
 
 function drawHouseWalls(ctx2, house) {
   const { x, y, w, h, wallColor, roofColor, doorOpen } = house;
-  const ds = w / 2 - DOOR_W / 2;
-
-  // Shadow
-  ctx2.fillStyle = 'rgba(0,0,0,0.2)';
-  ctx2.fillRect(x + 6, y + 6, w, h);
-
-  // Wall panels
+  const ds = w/2 - DOOR_W/2;
+  ctx2.fillStyle = 'rgba(0,0,0,0.2)'; ctx2.fillRect(x+6, y+6, w, h);
   ctx2.fillStyle = wallColor;
-  ctx2.fillRect(x, y, w, WALL_T);                          // north
-  ctx2.fillRect(x, y, WALL_T, h);                          // west
-  ctx2.fillRect(x + w - WALL_T, y, WALL_T, h);             // east
-  ctx2.fillRect(x, y + h - WALL_T, ds, WALL_T);            // south-left
-  ctx2.fillRect(x + ds + DOOR_W, y + h - WALL_T, w - ds - DOOR_W, WALL_T); // south-right
-
-  // Door frame (always drawn)
-  ctx2.strokeStyle = roofColor;
-  ctx2.lineWidth = 2;
-  ctx2.strokeRect(x + ds - 2, y + h - WALL_T - TILE, DOOR_W + 4, TILE + WALL_T);
-
-  // Door panel
+  ctx2.fillRect(x, y, w, WALL_T);
+  ctx2.fillRect(x, y, WALL_T, h);
+  ctx2.fillRect(x+w-WALL_T, y, WALL_T, h);
+  ctx2.fillRect(x, y+h-WALL_T, ds, WALL_T);
+  ctx2.fillRect(x+ds+DOOR_W, y+h-WALL_T, w-ds-DOOR_W, WALL_T);
+  ctx2.strokeStyle = roofColor; ctx2.lineWidth = 2;
+  ctx2.strokeRect(x+ds-2, y+h-WALL_T-TILE, DOOR_W+4, TILE+WALL_T);
   if (!doorOpen) {
     ctx2.fillStyle = roofColor;
-    ctx2.fillRect(x + ds, y + h - WALL_T - TILE + 2, DOOR_W, TILE - 2);
-    // Door knob
+    ctx2.fillRect(x+ds, y+h-WALL_T-TILE+2, DOOR_W, TILE-2);
     ctx2.fillStyle = '#f0c040';
-    ctx2.beginPath();
-    ctx2.arc(x + ds + DOOR_W - 7, y + h - WALL_T - TILE/2, 3, 0, Math.PI*2);
-    ctx2.fill();
+    ctx2.beginPath(); ctx2.arc(x+ds+DOOR_W-7, y+h-WALL_T-TILE/2, 3, 0, Math.PI*2); ctx2.fill();
   } else {
-    // Door open — draw it folded to the side
     ctx2.fillStyle = roofColor;
-    ctx2.fillRect(x + ds - WALL_T - TILE + 2, y + h - WALL_T - TILE + 2, TILE - 2, TILE - 2);
+    ctx2.fillRect(x+ds-WALL_T-TILE+2, y+h-WALL_T-TILE+2, TILE-2, TILE-2);
     ctx2.fillStyle = '#f0c040';
-    ctx2.beginPath();
-    ctx2.arc(x + ds - WALL_T - 4, y + h - WALL_T - TILE/2, 3, 0, Math.PI*2);
-    ctx2.fill();
+    ctx2.beginPath(); ctx2.arc(x+ds-WALL_T-4, y+h-WALL_T-TILE/2, 3, 0, Math.PI*2); ctx2.fill();
   }
-
-  // Windows (two, one on each side)
-  const winY = y + TILE * 0.6;
-  const winW = TILE * 0.55, winH = TILE * 0.5;
-  for (const wx of [x + WALL_T + 6, x + w - WALL_T - 6 - winW]) {
-    ctx2.fillStyle = '#b8d8f0';
-    ctx2.fillRect(wx, winY, winW, winH);
-    ctx2.strokeStyle = wallColor;
-    ctx2.lineWidth = 2;
-    ctx2.strokeRect(wx, winY, winW, winH);
-    // cross pane
-    ctx2.strokeStyle = 'rgba(0,0,0,0.15)';
-    ctx2.lineWidth = 1;
+  const winY = y+TILE*0.6, winW = TILE*0.55, winH = TILE*0.5;
+  for (const wx of [x+WALL_T+6, x+w-WALL_T-6-winW]) {
+    ctx2.fillStyle = '#b8d8f0'; ctx2.fillRect(wx, winY, winW, winH);
+    ctx2.strokeStyle = wallColor; ctx2.lineWidth = 2; ctx2.strokeRect(wx, winY, winW, winH);
+    ctx2.strokeStyle = 'rgba(0,0,0,0.15)'; ctx2.lineWidth = 1;
     ctx2.beginPath();
-    ctx2.moveTo(wx + winW/2, winY); ctx2.lineTo(wx + winW/2, winY + winH);
-    ctx2.moveTo(wx, winY + winH/2); ctx2.lineTo(wx + winW, winY + winH/2);
+    ctx2.moveTo(wx+winW/2, winY); ctx2.lineTo(wx+winW/2, winY+winH);
+    ctx2.moveTo(wx, winY+winH/2); ctx2.lineTo(wx+winW, winY+winH/2);
     ctx2.stroke();
   }
-
-  // Roof (triangular overhang above north wall)
-  const roofOverhang = 8;
   ctx2.fillStyle = roofColor;
   ctx2.beginPath();
-  ctx2.moveTo(x - roofOverhang, y);
-  ctx2.lineTo(x + w/2, y - TILE * 0.9);
-  ctx2.lineTo(x + w + roofOverhang, y);
-  ctx2.closePath();
-  ctx2.fill();
-  // roof ridge
-  ctx2.strokeStyle = 'rgba(0,0,0,0.2)';
-  ctx2.lineWidth = 2;
-  ctx2.stroke();
-
-  // Wall outline
-  ctx2.strokeStyle = 'rgba(0,0,0,0.3)';
-  ctx2.lineWidth = 1;
+  ctx2.moveTo(x-8, y); ctx2.lineTo(x+w/2, y-TILE*0.9); ctx2.lineTo(x+w+8, y);
+  ctx2.closePath(); ctx2.fill();
+  ctx2.strokeStyle = 'rgba(0,0,0,0.2)'; ctx2.lineWidth = 2; ctx2.stroke();
+  ctx2.strokeStyle = 'rgba(0,0,0,0.3)'; ctx2.lineWidth = 1;
   ctx2.strokeRect(x, y, w, h);
 }
 
 // ─── Player ──────────────────────────────────────────────────────────────────
 const player = {
-  x: (MAP_COLS / 2) * TILE,
-  y: (MAP_ROWS / 2) * TILE,
-  facing: 0,
+  x: (MAP_COLS/2)*TILE, y: (MAP_ROWS/2)*TILE,
+  facing: Math.PI/2,
+  stamina: STAMINA_MAX,
+  sprinting: false,
+  walkCycle: 0,
 };
 
-function drawPlayer(ctx2, x, y, facing) {
-  const r = PLAYER_R;
+function drawPlayer(ctx2, p) {
+  const { x, y, facing, walkCycle, sprinting } = p;
+  const moving = keys['w']||keys['s']||keys['a']||keys['d']||
+                 keys['arrowup']||keys['arrowdown']||keys['arrowleft']||keys['arrowright'];
+  const wb = moving ? Math.sin(walkCycle * 8) * 3 : 0;
+
   // Shadow
-  ctx2.save();
-  ctx2.globalAlpha = 0.22;
+  ctx2.save(); ctx2.globalAlpha = 0.2;
   ctx2.fillStyle = '#000';
-  ctx2.beginPath();
-  ctx2.ellipse(x, y + r * 0.8, r * 0.7, r * 0.22, 0, 0, Math.PI*2);
-  ctx2.fill();
+  ctx2.beginPath(); ctx2.ellipse(x, y+12, 9, 3.5, 0, 0, Math.PI*2); ctx2.fill();
   ctx2.restore();
-  // Body
-  ctx2.beginPath();
-  ctx2.arc(x, y, r, 0, Math.PI*2);
-  const g = ctx2.createRadialGradient(x - r*0.3, y - r*0.3, 1, x, y, r);
-  g.addColorStop(0, '#6ec6f5');
-  g.addColorStop(1, '#2277bb');
-  ctx2.fillStyle = g;
-  ctx2.fill();
-  ctx2.strokeStyle = '#aaddff';
-  ctx2.lineWidth = 1.5;
-  ctx2.stroke();
-  // Facing dot
-  ctx2.beginPath();
-  ctx2.arc(x + Math.cos(facing)*r*0.6, y + Math.sin(facing)*r*0.6, 3, 0, Math.PI*2);
-  ctx2.fillStyle = '#fff';
-  ctx2.fill();
+
+  // Rotate drawing to face direction
+  ctx2.save();
+  ctx2.translate(x, y);
+  ctx2.rotate(facing + Math.PI/2);
+
+  // Legs
+  ctx2.strokeStyle = sprinting ? '#3355bb' : '#4466aa';
+  ctx2.lineWidth = 4; ctx2.lineCap = 'round';
+  ctx2.beginPath(); ctx2.moveTo(-3, 3); ctx2.lineTo(-3+wb, 12); ctx2.stroke();
+  ctx2.beginPath(); ctx2.moveTo(3, 3);  ctx2.lineTo(3-wb, 12);  ctx2.stroke();
+
+  // Body / shirt
+  const bodyColor = sprinting ? '#cc5533' : '#3377cc';
+  ctx2.fillStyle = bodyColor;
+  ctx2.beginPath(); ctx2.roundRect(-6, -8, 12, 13, 3); ctx2.fill();
+
+  // Arms
+  ctx2.strokeStyle = '#e0aa80';
+  ctx2.lineWidth = 3; ctx2.lineCap = 'round';
+  ctx2.beginPath(); ctx2.moveTo(-6, -5); ctx2.lineTo(-11, 1+wb); ctx2.stroke();
+  ctx2.beginPath(); ctx2.moveTo(6, -5);  ctx2.lineTo(11, 1-wb);  ctx2.stroke();
+
+  // Head
+  ctx2.fillStyle = '#e8b070';
+  ctx2.beginPath(); ctx2.arc(0, -15, 8, 0, Math.PI*2); ctx2.fill();
+  ctx2.strokeStyle = 'rgba(0,0,0,0.2)'; ctx2.lineWidth = 1; ctx2.stroke();
+
+  // Hair
+  ctx2.fillStyle = '#5c3010';
+  ctx2.beginPath(); ctx2.ellipse(0, -20, 8, 5, 0, Math.PI, Math.PI*2); ctx2.fill();
+
+  // Eyes
+  ctx2.fillStyle = '#333';
+  ctx2.beginPath(); ctx2.arc(-3, -15, 1.3, 0, Math.PI*2); ctx2.fill();
+  ctx2.beginPath(); ctx2.arc(3, -15, 1.3, 0, Math.PI*2); ctx2.fill();
+
+  ctx2.restore();
 }
 
-// ─── Collision helpers ───────────────────────────────────────────────────────
+// ─── Collision ───────────────────────────────────────────────────────────────
 function resolveCircleRect(px, py, rect) {
-  const nearX = Math.max(rect.x, Math.min(px, rect.x + rect.w));
-  const nearY = Math.max(rect.y, Math.min(py, rect.y + rect.h));
-  const dx = px - nearX, dy = py - nearY;
-  const dist2 = dx*dx + dy*dy;
-  if (dist2 < PLAYER_R * PLAYER_R) {
-    const dist = Math.sqrt(dist2);
-    if (dist === 0) return { x: px, y: py - PLAYER_R }; // fallback
-    const push = PLAYER_R - dist;
-    return { x: px + (dx/dist)*push, y: py + (dy/dist)*push };
+  const nearX = Math.max(rect.x, Math.min(px, rect.x+rect.w));
+  const nearY = Math.max(rect.y, Math.min(py, rect.y+rect.h));
+  const dx = px-nearX, dy = py-nearY;
+  const d2 = dx*dx+dy*dy;
+  if (d2 < PLAYER_R*PLAYER_R) {
+    const d = Math.sqrt(d2) || 0.01;
+    return { x: px+(dx/d)*(PLAYER_R-d), y: py+(dy/d)*(PLAYER_R-d) };
   }
   return null;
 }
 
 // ─── Input ───────────────────────────────────────────────────────────────────
 const keys = {};
-let eJustPressed = false;
+let ePressed = false, fPressed = false;
 window.addEventListener('keydown', e => {
-  keys[e.key.toLowerCase()] = true;
-  if (e.key.toLowerCase() === 'e') eJustPressed = true;
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if (k === 'e') ePressed = true;
+  if (k === 'f') fPressed = true;
+  e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+// ─── Dialog ──────────────────────────────────────────────────────────────────
+let dialogVillager = null;
+const dialogBox  = document.getElementById('dialog-box');
+const dialogName = document.getElementById('dialog-name');
+const dialogText = document.getElementById('dialog-text');
+
+function openDialog(v) {
+  dialogVillager = v;
+  dialogName.textContent = v.name;
+  dialogText.textContent = v.lines[v.lineIndex];
+  dialogBox.classList.add('show');
+}
+function advanceDialog() {
+  if (!dialogVillager) return;
+  dialogVillager.lineIndex = (dialogVillager.lineIndex + 1) % dialogVillager.lines.length;
+  if (dialogVillager.lineIndex === 0) {
+    dialogBox.classList.remove('show');
+    dialogVillager = null;
+  } else {
+    dialogText.textContent = dialogVillager.lines[dialogVillager.lineIndex];
+  }
+}
 
 // ─── Camera ──────────────────────────────────────────────────────────────────
 const cam = { x: player.x, y: player.y };
 
+// ─── Sprint HUD ──────────────────────────────────────────────────────────────
+const sprintBar  = document.getElementById('sprint-bar');
+const sprintFill = document.getElementById('sprint-fill');
+
+// ─── Prompt ──────────────────────────────────────────────────────────────────
+const promptEl = document.getElementById('interact-prompt');
+
 // ─── Minimap ─────────────────────────────────────────────────────────────────
 function drawMinimap(W, H) {
   const mmW = 130, mmH = 130;
-  const mmX = W - mmW - 14, mmY = H - mmH - 14;
-  const sx = mmW / (MAP_COLS * TILE), sy = mmH / (MAP_ROWS * TILE);
-
+  const mmX = W-mmW-14, mmY = H-mmH-14;
+  const sx = mmW/(MAP_COLS*TILE), sy = mmH/(MAP_ROWS*TILE);
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.beginPath(); ctx.roundRect(mmX-4, mmY-4, mmW+8, mmH+8, 6); ctx.fill();
   ctx.drawImage(mapCanvas, mmX, mmY, mmW, mmH);
-
-  // Farms on minimap (green tint)
-  ctx.fillStyle = 'rgba(80,160,60,0.5)';
-  for (const f of farms) ctx.fillRect(mmX + f.x*sx, mmY + f.y*sy, f.w*sx, f.h*sy);
-
-  // Houses on minimap
+  // Forest tint
+  ctx.fillStyle = 'rgba(0,60,0,0.35)';
+  ctx.fillRect(mmX+FOREST_C0*TILE*sx, mmY+FOREST_R0*TILE*sy,
+    (FOREST_C1-FOREST_C0+1)*TILE*sx, (FOREST_R1-FOREST_R0+1)*TILE*sy);
+  ctx.fillStyle = 'rgba(80,160,60,0.45)';
+  for (const f of farms) ctx.fillRect(mmX+f.x*sx, mmY+f.y*sy, f.w*sx, f.h*sy);
   ctx.fillStyle = '#c9935a';
-  for (const h of houses) ctx.fillRect(mmX + h.x*sx, mmY + h.y*sy, h.w*sx, h.h*sy);
-
-  // Player dot
+  for (const h of houses) ctx.fillRect(mmX+h.x*sx, mmY+h.y*sy, h.w*sx, h.h*sy);
+  ctx.fillStyle = '#ffdd88';
+  for (const v of villagers) {
+    ctx.beginPath(); ctx.arc(mmX+v.x*sx, mmY+v.y*sy, 2, 0, Math.PI*2); ctx.fill();
+  }
   ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.arc(mmX + player.x*sx, mmY + player.y*sy, 3, 0, Math.PI*2);
-  ctx.fill();
-
+  ctx.beginPath(); ctx.arc(mmX+player.x*sx, mmY+player.y*sy, 3, 0, Math.PI*2); ctx.fill();
   ctx.strokeStyle = '#1a3a6a'; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.roundRect(mmX-4, mmY-4, mmW+8, mmH+8, 6); ctx.stroke();
 }
 
 // ─── Update ──────────────────────────────────────────────────────────────────
-const promptEl = document.getElementById('interact-prompt');
-
 function update(dt) {
+  // Dialog blocks movement
+  if (dialogVillager) {
+    if (fPressed) advanceDialog();
+    ePressed = fPressed = false;
+    const lerp = 1 - Math.pow(0.01, dt);
+    cam.x += (player.x - cam.x) * lerp;
+    cam.y += (player.y - cam.y) * lerp;
+    return;
+  }
+
+  // Sprint
+  const wantSprint = (keys['shift'] || keys['shiftleft'] || keys['shiftright']) && player.stamina > 0;
+  if (wantSprint) {
+    player.stamina = Math.max(0, player.stamina - STAMINA_DRAIN * dt);
+    player.sprinting = true;
+  } else {
+    player.stamina = Math.min(STAMINA_MAX, player.stamina + STAMINA_REGEN * dt);
+    player.sprinting = false;
+  }
+  const speed = player.sprinting ? SPRINT_SPEED : PLAYER_SPEED;
+
+  // Stamina bar
+  const pct = player.stamina / STAMINA_MAX;
+  sprintFill.style.width = (pct * 100) + '%';
+  sprintFill.style.background = pct < 0.25 ? '#e05030' : pct < 0.6 ? '#e0a030' : '#5ad';
+  if (player.sprinting || player.stamina < STAMINA_MAX) sprintBar.classList.add('show');
+  else sprintBar.classList.remove('show');
+
   // Movement
   let dx = 0, dy = 0;
   if (keys['w'] || keys['arrowup'])    dy -= 1;
@@ -431,45 +647,66 @@ function update(dt) {
   if (keys['a'] || keys['arrowleft'])  dx -= 1;
   if (keys['d'] || keys['arrowright']) dx += 1;
   if (dx !== 0 || dy !== 0) {
-    const len = Math.sqrt(dx*dx + dy*dy);
+    const len = Math.sqrt(dx*dx+dy*dy);
     dx /= len; dy /= len;
-    player.facing = Math.atan2(dy, dx);
-    player.x += dx * PLAYER_SPEED * dt;
-    player.y += dy * PLAYER_SPEED * dt;
+    player.facing = Math.atan2(dy, dx) - Math.PI/2;
+    player.x += dx * speed * dt;
+    player.y += dy * speed * dt;
+    player.walkCycle += dt;
   }
 
-  // Clamp to map
-  const half = PLAYER_R;
-  player.x = Math.max(half, Math.min(MAP_COLS*TILE - half, player.x));
-  player.y = Math.max(half, Math.min(MAP_ROWS*TILE - half, player.y));
+  // Map clamp
+  player.x = Math.max(PLAYER_R, Math.min(MAP_COLS*TILE-PLAYER_R, player.x));
+  player.y = Math.max(PLAYER_R, Math.min(MAP_ROWS*TILE-PLAYER_R, player.y));
 
-  // Resolve house wall collisions
-  for (const house of houses) {
+  // House collision
+  for (const house of houses)
     for (const rect of getHouseWalls(house)) {
-      const resolved = resolveCircleRect(player.x, player.y, rect);
-      if (resolved) { player.x = resolved.x; player.y = resolved.y; }
+      const r = resolveCircleRect(player.x, player.y, rect);
+      if (r) { player.x = r.x; player.y = r.y; }
+    }
+
+  // Tree collision (trunk only)
+  for (const t of trees) {
+    const minDist = PLAYER_R + t.r * 0.45;
+    const dx2 = player.x - t.x, dy2 = player.y - t.y;
+    const d = Math.sqrt(dx2*dx2+dy2*dy2);
+    if (d < minDist && d > 0) {
+      player.x += (dx2/d)*(minDist-d);
+      player.y += (dy2/d)*(minDist-d);
     }
   }
 
-  // Nearest door check for E interaction
-  let nearestHouse = null, nearestDist = Infinity;
+  // Determine nearest interactable
+  let nearestDoor = null, nearestDoorDist = Infinity;
   for (const house of houses) {
     const dc = doorCenter(house);
-    const dist = Math.hypot(player.x - dc.x, player.y - dc.y);
-    if (dist < nearestDist) { nearestDist = dist; nearestHouse = house; }
+    const d = Math.hypot(player.x-dc.x, player.y-dc.y);
+    if (d < nearestDoorDist) { nearestDoorDist = d; nearestDoor = house; }
   }
 
-  if (nearestDist < INTERACT_DIST) {
-    const label = nearestHouse.doorOpen ? '[E] Close door' : '[E] Open door';
-    promptEl.textContent = label;
+  let nearestVillager = null, nearestVillagerDist = Infinity;
+  for (const v of villagers) {
+    const d = Math.hypot(player.x-v.x, player.y-v.y);
+    if (d < nearestVillagerDist) { nearestVillagerDist = d; nearestVillager = v; }
+  }
+
+  // Prompt priority: villager > door
+  if (nearestVillagerDist < TALK_DIST) {
+    promptEl.textContent = '[F] Talk to ' + nearestVillager.name;
     promptEl.classList.add('show');
-    if (eJustPressed) nearestHouse.doorOpen = !nearestHouse.doorOpen;
+    if (fPressed) openDialog(nearestVillager);
+  } else if (nearestDoorDist < INTERACT_DIST) {
+    promptEl.textContent = nearestDoor.doorOpen ? '[E] Close door' : '[E] Open door';
+    promptEl.classList.add('show');
+    if (ePressed) nearestDoor.doorOpen = !nearestDoor.doorOpen;
   } else {
     promptEl.classList.remove('show');
   }
-  eJustPressed = false;
 
-  // Camera smooth follow
+  ePressed = fPressed = false;
+  updateVillagers(dt);
+
   const lerp = 1 - Math.pow(0.01, dt);
   cam.x += (player.x - cam.x) * lerp;
   cam.y += (player.y - cam.y) * lerp;
@@ -479,37 +716,41 @@ function update(dt) {
 function draw() {
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
-
   const offX = Math.round(W/2 - cam.x);
   const offY = Math.round(H/2 - cam.y);
-
   ctx.save();
   ctx.translate(offX, offY);
 
-  // Grass
   ctx.drawImage(mapCanvas, 0, 0);
-
-  // Farms (drawn over grass)
   for (const farm of farms) drawFarm(ctx, farm);
-
-  // House floors (drawn before player)
   for (const house of houses) drawHouseFloor(ctx, house);
 
-  // Player
-  drawPlayer(ctx, player.x, player.y, player.facing);
+  // Sort trees + villagers + player by Y for depth
+  const entities = [
+    ...trees.map(t => ({ y: t.y + t.r, draw: () => drawTree(ctx, t) })),
+    ...villagers.map(v => ({ y: v.y + 12, draw: () => drawVillager(ctx, v) })),
+    { y: player.y + 12, draw: () => drawPlayer(ctx, player) },
+  ];
+  entities.sort((a, b) => a.y - b.y);
+  for (const e of entities) e.draw();
 
-  // House walls (drawn AFTER player so walls appear on top for depth)
   for (const house of houses) drawHouseWalls(ctx, house);
 
-  ctx.restore();
+  // Forest fog overlay
+  const forestX = FOREST_C0*TILE, forestY = FOREST_R0*TILE;
+  const forestW  = (FOREST_C1-FOREST_C0+1)*TILE;
+  const forestH  = (FOREST_R1-FOREST_R0+1)*TILE;
+  ctx.fillStyle = 'rgba(0,20,0,0.18)';
+  ctx.fillRect(forestX, forestY, forestW, forestH);
 
+  ctx.restore();
   drawMinimap(W, H);
 }
 
 // ─── Loop ────────────────────────────────────────────────────────────────────
 let lastTime = 0;
 function loop(ts) {
-  const dt = Math.min((ts - lastTime) / 1000, 0.1);
+  const dt = Math.min((ts - lastTime)/1000, 0.1);
   lastTime = ts;
   update(dt);
   draw();
