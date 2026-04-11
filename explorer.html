@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Explorer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    canvas {
+      display: block;
+      cursor: none;
+    }
+
+    #overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      background: rgba(0, 0, 0, 0.72);
+      color: #e8d5b0;
+      font-family: monospace;
+      font-size: 16px;
+      z-index: 10;
+    }
+
+    #overlay h1 {
+      font-size: 36px;
+      letter-spacing: 4px;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    #overlay .hint {
+      font-size: 13px;
+      color: #aaa;
+      margin-top: 16px;
+    }
+
+    #overlay .controls {
+      font-size: 13px;
+      color: #c8c8c8;
+      line-height: 2;
+      text-align: center;
+    }
+
+    #overlay.hidden { display: none; }
+
+    #crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      border: 2px solid rgba(255, 255, 255, 0.75);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 5;
+      display: none;
+    }
+
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      color: #e8d5b0;
+      font-family: monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      z-index: 5;
+      pointer-events: none;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+<div id="crosshair"></div>
+<div id="hud"></div>
+<div id="overlay">
+  <h1>EXPLORER</h1>
+  <div class="controls">
+    WASD &nbsp;&nbsp; Move<br>
+    SHIFT &nbsp; Sprint<br>
+    SPACE &nbsp; Jump<br>
+    MOUSE &nbsp; Look
+  </div>
+  <div class="hint">Click to explore &mdash; ESC to pause</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════
+const WALK_SPEED       = 6;       // units per second
+const SPRINT_SPEED     = 14;      // units per second (Shift held)
+const JUMP_FORCE       = 9;       // initial upward velocity on jump
+const GRAVITY          = -22;     // downward acceleration (units/s²)
+const GROUND_Y         = 0;       // Y position of the ground surface
+
+const CAM_DISTANCE     = 8;       // camera–player orbit radius (units)
+const CAM_PITCH_MIN    = 0.15;    // radians — prevent clipping into ground
+const CAM_PITCH_MAX    = 1.35;    // radians — prevent gimbal flip
+const CAM_HEIGHT_OFFSET = 1.6;   // camera looks at this height above player feet
+const MOUSE_SENSITIVITY = 0.0025; // radians per pixel of mouse delta
+
+const PLAYER_BODY_W    = 0.5;
+const PLAYER_BODY_H    = 1.0;
+const PLAYER_BODY_D    = 0.5;
+const PLAYER_BODY_COLOR = 0x4a90d9;
+const PLAYER_HEAD_COLOR = 0x2c5282;
+
+const BOB_FREQ         = 8;       // oscillations per second at walk speed
+const BOB_AMPLITUDE    = 0.06;    // vertical bob magnitude (units)
+const SPRINT_BOB_MULT  = 1.6;     // bob speed multiplier when sprinting
+
+const GROUND_SIZE      = 200;
+const GROUND_COLOR     = 0x2a7a2a;
+const GROUND_GRID_COLOR = 0x1a5a1a;
+
+const FOG_COLOR        = 0x87ceeb;
+const FOG_NEAR         = 40;
+const FOG_FAR          = 120;
+
+// ═══════════════════════════════════════════════════════════════
+// SCENE SETUP
+// ═══════════════════════════════════════════════════════════════
+const canvas   = document.getElementById('gameCanvas');
+const overlay  = document.getElementById('overlay');
+const crosshair = document.getElementById('crosshair');
+const hudEl    = document.getElementById('hud');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(FOG_COLOR);
+scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// INPUT
+// ═══════════════════════════════════════════════════════════════
+const keys = {};
+
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+    e.preventDefault();
+  }
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ═══════════════════════════════════════════════════════════════
+// CAMERA ORBIT STATE
+// ═══════════════════════════════════════════════════════════════
+const cam = {
+  yaw:   0,
+  pitch: 0.6,
+  distance: CAM_DISTANCE,
+};
+
+const camTarget = new THREE.Vector3();
+
+function updateCamera(playerPos) {
+  camTarget.set(playerPos.x, playerPos.y + CAM_HEIGHT_OFFSET, playerPos.z);
+
+  const sinPitch = Math.sin(cam.pitch);
+  const cosPitch = Math.cos(cam.pitch);
+  const sinYaw   = Math.sin(cam.yaw);
+  const cosYaw   = Math.cos(cam.yaw);
+
+  camera.position.set(
+    camTarget.x + cam.distance * sinPitch * sinYaw,
+    camTarget.y + cam.distance * cosPitch,
+    camTarget.z + cam.distance * sinPitch * cosYaw
+  );
+  camera.lookAt(camTarget);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PLAYER CLASS
+// ═══════════════════════════════════════════════════════════════
+class Player {
+  constructor() {
+    this.pos      = new THREE.Vector3(0, GROUND_Y, 0);
+    this.vy       = 0;
+    this.onGround = true;
+
+    this.walkTime   = 0;
+    this.isMoving   = false;
+    this.isSprinting = false;
+    this.facingYaw  = 0;
+
+    this._buildMesh();
+  }
+
+  _buildMesh() {
+    const bodyGeo = new THREE.BoxGeometry(PLAYER_BODY_W, PLAYER_BODY_H, PLAYER_BODY_D);
+    const bodyMat = new THREE.MeshLambertMaterial({ color: PLAYER_BODY_COLOR });
+    this.bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+    this.bodyMesh.castShadow = true;
+
+    const headGeo = new THREE.BoxGeometry(PLAYER_BODY_W * 0.8, PLAYER_BODY_H * 0.4, PLAYER_BODY_D * 0.8);
+    const headMat = new THREE.MeshLambertMaterial({ color: PLAYER_HEAD_COLOR });
+    this.headMesh = new THREE.Mesh(headGeo, headMat);
+    this.headMesh.castShadow = true;
+    // Head sits on top of the body (body pivot is at its center)
+    this.headMesh.position.y = PLAYER_BODY_H / 2 + PLAYER_BODY_H * 0.2;
+
+    this.group = new THREE.Group();
+    this.group.add(this.bodyMesh);
+    this.group.add(this.headMesh);
+    scene.add(this.group);
+  }
+
+  update(dt) {
+    const dtS = dt / 1000;
+
+    // ── Horizontal movement (camera-relative) ──────────────────
+    const speed = (keys['ShiftLeft'] || keys['ShiftRight']) ? SPRINT_SPEED : WALK_SPEED;
+    this.isSprinting = speed === SPRINT_SPEED;
+
+    let dx = 0, dz = 0;
+    if (keys['KeyW'] || keys['ArrowUp'])    dz -= 1;
+    if (keys['KeyS'] || keys['ArrowDown'])  dz += 1;
+    if (keys['KeyA'] || keys['ArrowLeft'])  dx -= 1;
+    if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+
+    this.isMoving = (dx !== 0 || dz !== 0);
+
+    if (this.isMoving) {
+      // Normalize diagonal movement
+      const len = Math.sqrt(dx * dx + dz * dz);
+      dx /= len;
+      dz /= len;
+
+      // Rotate movement vector by cam.yaw so W = camera-forward
+      const cosY = Math.cos(cam.yaw);
+      const sinY = Math.sin(cam.yaw);
+      const worldDx = dx * cosY + dz * sinY;
+      const worldDz = dx * -sinY + dz * cosY;
+
+      this.pos.x += worldDx * speed * dtS;
+      this.pos.z += worldDz * speed * dtS;
+
+      // Character faces direction of movement
+      this.facingYaw = Math.atan2(worldDx, worldDz);
+    }
+
+    // ── Jump ───────────────────────────────────────────────────
+    if (keys['Space'] && this.onGround) {
+      this.vy = JUMP_FORCE;
+      this.onGround = false;
+    }
+
+    // ── Gravity ────────────────────────────────────────────────
+    if (!this.onGround) {
+      this.vy += GRAVITY * dtS;
+      this.pos.y += this.vy * dtS;
+      if (this.pos.y <= GROUND_Y) {
+        this.pos.y = GROUND_Y;
+        this.vy = 0;
+        this.onGround = true;
+      }
+    }
+
+    // ── Walking bob ────────────────────────────────────────────
+    if (this.isMoving && this.onGround) {
+      const bobMult = this.isSprinting ? SPRINT_BOB_MULT : 1.0;
+      this.walkTime += dtS * BOB_FREQ * bobMult;
+    } else {
+      // Drift toward next zero crossing so the bob settles without a pop
+      this.walkTime += dtS * 4;
+    }
+
+    const bobOffset = (this.isMoving && this.onGround)
+      ? Math.sin(this.walkTime * Math.PI * 2) * BOB_AMPLITUDE
+      : 0;
+
+    // ── Sync mesh to physics state ─────────────────────────────
+    // pos.y is feet; body center is pos.y + half-height
+    this.group.position.set(
+      this.pos.x,
+      this.pos.y + PLAYER_BODY_H / 2 + bobOffset,
+      this.pos.z
+    );
+    this.group.rotation.y = this.facingYaw;
+
+    // Forward lean during sprint
+    this.bodyMesh.rotation.x = (this.isSprinting && this.isMoving) ? -0.18 : 0;
+    this.headMesh.rotation.x = (this.isSprinting && this.isMoving) ? -0.18 : 0;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GROUND + SCENE OBJECTS
+// ═══════════════════════════════════════════════════════════════
+function buildScene() {
+  // Ground plane
+  const groundGeo = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE);
+  const groundMat = new THREE.MeshLambertMaterial({ color: GROUND_COLOR });
+  const ground    = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = GROUND_Y;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // Grid overlay for visual motion reference
+  const grid = new THREE.GridHelper(GROUND_SIZE, 50, GROUND_GRID_COLOR, GROUND_GRID_COLOR);
+  grid.position.y = GROUND_Y + 0.01; // slightly above ground to prevent z-fighting
+  scene.add(grid);
+
+  // Ambient fill light
+  const ambient = new THREE.AmbientLight(0xffffff, 0.45);
+  scene.add(ambient);
+
+  // Directional sun light with shadows
+  const sun = new THREE.DirectionalLight(0xfff5e0, 0.9);
+  sun.position.set(30, 50, 20);
+  sun.castShadow = true;
+  sun.shadow.mapSize.width  = 1024;
+  sun.shadow.mapSize.height = 1024;
+  sun.shadow.camera.near   = 0.5;
+  sun.shadow.camera.far    = 150;
+  sun.shadow.camera.left   = -60;
+  sun.shadow.camera.right  =  60;
+  sun.shadow.camera.top    =  60;
+  sun.shadow.camera.bottom = -60;
+  scene.add(sun);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════════════
+const game = {
+  state:    'locked',  // 'locked' | 'playing'
+  lastTime: 0,
+};
+
+// ═══════════════════════════════════════════════════════════════
+// POINTER LOCK
+// ═══════════════════════════════════════════════════════════════
+canvas.addEventListener('click', () => {
+  if (game.state === 'locked') {
+    canvas.requestPointerLock();
+  }
+});
+
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement === canvas) {
+    game.state = 'playing';
+    overlay.classList.add('hidden');
+    crosshair.style.display = 'block';
+  } else {
+    game.state = 'locked';
+    overlay.classList.remove('hidden');
+    crosshair.style.display = 'none';
+    // Clear held keys so the player doesn't drift after Escape
+    for (const k in keys) keys[k] = false;
+  }
+});
+
+document.addEventListener('mousemove', e => {
+  if (game.state !== 'playing') return;
+  cam.yaw   -= e.movementX * MOUSE_SENSITIVITY;
+  cam.pitch += e.movementY * MOUSE_SENSITIVITY;
+  cam.pitch  = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, cam.pitch));
+});
+
+// ═══════════════════════════════════════════════════════════════
+// HUD
+// ═══════════════════════════════════════════════════════════════
+function updateHUD(player) {
+  const state = player.isSprinting ? 'SPRINTING'
+              : player.isMoving    ? 'WALKING'
+              : 'IDLE';
+  const air = player.onGround ? '' : '  |  AIRBORNE';
+  hudEl.innerHTML =
+    `${state}${air}<br>` +
+    `<span style="color:#999;font-size:11px">WASD move &nbsp; SHIFT sprint &nbsp; SPACE jump &nbsp; ESC pause</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GAME LOOP
+// ═══════════════════════════════════════════════════════════════
+function gameLoop(timestamp) {
+  const dt = Math.min(timestamp - game.lastTime, 50);
+  game.lastTime = timestamp;
+
+  if (game.state === 'playing') {
+    player.update(dt);
+    updateCamera(player.pos);
+    updateHUD(player);
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(gameLoop);
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────
+buildScene();
+const player = new Player();
+updateCamera(player.pos);
+
+requestAnimationFrame(ts => {
+  game.lastTime = ts;
+  requestAnimationFrame(gameLoop);
+});
+</script>
+</body>
+</html>
