@@ -300,7 +300,7 @@
     {
       id: 'oracle', name: 'ORACLE', avatar: '🔮',
       difficulty: 'Unbeatable', diffClass: 'diff-perfect',
-      desc: 'Sees every threat before it forms. Uses threat-space search to analyse 8+ moves deep on any grid. You will not win.',
+      desc: 'Sees every fork before it forms. Scans all active win-lines 8 moves deep and punishes double threats instantly. You will not win.',
       getMove(board) {
         if (gridSize === 3) {
           // 3×3: full minimax is already perfect
@@ -522,15 +522,28 @@
     return -1;
   }
 
-  // Board heuristic for depth-limited minimax (used on 5×5)
+  // Board heuristic for depth-limited minimax (used on 5×5).
+  // Detects immediate threats (2-in-a-row) and double threats (forks),
+  // which are near-certain wins that pure piece-counting misses.
   function evalBoard(b) {
     let score = 0;
+    let oThreats = 0, xThreats = 0;
     for (const line of WINS) {
       const o = line.filter(i => b[i] === 'O').length;
       const x = line.filter(i => b[i] === 'X').length;
-      if (x === 0) score += o * o;
-      if (o === 0) score -= x * x;
+      if (x === 0) {
+        if      (o === 2) { score += 10; oThreats++; } // immediate threat
+        else if (o === 1)   score += 1;                 // potential
+      }
+      if (o === 0) {
+        if      (x === 2) { score -= 10; xThreats++; } // opponent threat
+        else if (x === 1)   score -= 1;
+      }
     }
+    // A fork (two simultaneous threats) cannot be fully blocked — treat it
+    // as nearly decisive at the evaluation horizon.
+    if (oThreats >= 2) score += 60;
+    if (xThreats >= 2) score -= 60;
     return score;
   }
 
@@ -578,18 +591,13 @@
       return [mid * gridSize + mid];
     }
     const relevant = new Set();
-    // Cells adjacent (8-dir) to any occupied cell
-    for (let i = 0; i < b.length; i++) {
-      if (b[i] === null) continue;
-      const r = Math.floor(i / gridSize), c = i % gridSize;
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          if (dr === 0 && dc === 0) continue;
-          const nr = r + dr, nc = c + dc;
-          if (nr >= 0 && nr < gridSize && nc >= 0 && nc < gridSize) {
-            const ni = nr * gridSize + nc;
-            if (b[ni] === null) relevant.add(ni);
-          }
+    // Add every empty cell that shares a win-line with any existing piece.
+    // This catches fork setups (e.g. a cell 2 squares away that completes two
+    // different 3-in-a-rows) which pure adjacency search misses entirely.
+    for (const line of WINS) {
+      if (line.some(i => b[i] !== null)) {
+        for (const i of line) {
+          if (b[i] === null) relevant.add(i);
         }
       }
     }
