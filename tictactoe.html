@@ -20,6 +20,7 @@
       background: #1a1a2e;
       font-family: 'Segoe UI', sans-serif;
       color: #eee;
+      padding: 1.5rem 1rem;
     }
 
     h1 {
@@ -34,6 +35,7 @@
       margin-bottom: 1.5rem;
       min-height: 1.5em;
       color: #a8dadc;
+      text-align: center;
     }
 
     #board {
@@ -61,13 +63,8 @@
       transform: scale(1.05);
     }
 
-    .cell.x {
-      color: #e94560;
-    }
-
-    .cell.o {
-      color: #a8dadc;
-    }
+    .cell.x { color: #e94560; }
+    .cell.o { color: #a8dadc; }
 
     .cell.win {
       background: #0f3460;
@@ -122,17 +119,6 @@
       border-color: #a8dadc;
     }
 
-    #difficulty {
-      padding: 0.45rem 0.8rem;
-      font-size: 0.9rem;
-      background: #16213e;
-      color: #eee;
-      border: 2px solid #0f3460;
-      border-radius: 20px;
-      cursor: pointer;
-      outline: none;
-    }
-
     #scoreboard {
       display: flex;
       gap: 2rem;
@@ -140,37 +126,141 @@
       font-size: 1rem;
     }
 
-    .score {
-      text-align: center;
-    }
-
-    .score span {
-      display: block;
-      font-size: 1.6rem;
-      font-weight: bold;
-    }
-
+    .score { text-align: center; }
+    .score span { display: block; font-size: 1.6rem; font-weight: bold; }
     .score.x-score span { color: #e94560; }
     .score.o-score span { color: #a8dadc; }
     .score.draw-score span { color: #aaa; }
+
+    /* --- Character picker --- */
+
+    #character-picker {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 1.2rem;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    #character-picker h3 {
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      color: #aaa;
+      text-transform: uppercase;
+    }
+
+    #character-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      justify-content: center;
+    }
+
+    .char-card {
+      background: #16213e;
+      border: 2px solid #0f3460;
+      border-radius: 14px;
+      padding: 0.6rem 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+      width: 100px;
+      text-align: center;
+      position: relative;
+    }
+
+    .char-card:hover {
+      border-color: #a8dadc;
+      background: #0f3460;
+      transform: scale(1.04);
+    }
+
+    .char-card.selected {
+      border-color: #e94560;
+      background: #0f3460;
+      box-shadow: 0 0 12px #e9456044;
+    }
+
+    .char-avatar {
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .char-name {
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: #eee;
+    }
+
+    .char-diff {
+      font-size: 0.65rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      padding: 0.15rem 0.45rem;
+      border-radius: 10px;
+      text-transform: uppercase;
+    }
+
+    .diff-easy    { background: #1b4332; color: #52b788; }
+    .diff-medium  { background: #7b4f00; color: #f4a261; }
+    .diff-hard    { background: #3b0063; color: #c77dff; }
+    .diff-unbeatable { background: #3d0000; color: #e94560; }
+
+    /* Active character banner */
+    #active-char-banner {
+      display: none;
+      align-items: center;
+      gap: 0.7rem;
+      background: #0f3460;
+      border: 2px solid #a8dadc33;
+      border-radius: 14px;
+      padding: 0.5rem 1rem;
+      margin-bottom: 1rem;
+      max-width: 400px;
+      width: 100%;
+    }
+
+    #active-char-banner .banner-avatar { font-size: 1.8rem; }
+
+    #active-char-info { display: flex; flex-direction: column; gap: 0.1rem; }
+    #active-char-info .banner-name { font-size: 0.95rem; font-weight: bold; color: #eee; }
+    #active-char-info .banner-desc { font-size: 0.75rem; color: #a8dadc; }
+    #active-char-info .banner-diff { font-size: 0.65rem; font-weight: bold; letter-spacing: 1px; }
   </style>
 </head>
 <body>
   <h1>TIC TAC TOE</h1>
 
   <div id="scoreboard">
-    <div class="score x-score">X <span id="score-x">0</span></div>
+    <div class="score x-score">You <span id="score-x">0</span></div>
     <div class="score draw-score">Draws <span id="score-d">0</span></div>
-    <div class="score o-score">O <span id="score-o">0</span></div>
+    <div class="score o-score">CPU <span id="score-o">0</span></div>
   </div>
 
   <div id="mode-controls">
     <button class="mode-btn active" id="btn-2p">2 Players</button>
     <button class="mode-btn" id="btn-cpu">vs Computer</button>
-    <select id="difficulty" style="display:none">
-      <option value="easy">Easy</option>
-      <option value="hard" selected>Hard</option>
-    </select>
+  </div>
+
+  <!-- Character picker (visible in CPU mode) -->
+  <div id="character-picker">
+    <h3>Choose your opponent</h3>
+    <div id="character-grid"></div>
+  </div>
+
+  <!-- Active character banner (shown during game in CPU mode) -->
+  <div id="active-char-banner">
+    <div class="banner-avatar" id="banner-avatar"></div>
+    <div id="active-char-info">
+      <div class="banner-name" id="banner-name"></div>
+      <div class="banner-diff" id="banner-diff-label"></div>
+      <div class="banner-desc" id="banner-desc"></div>
+    </div>
   </div>
 
   <div id="status">X's turn</div>
@@ -190,23 +280,151 @@
   <button id="reset">New Game</button>
 
   <script>
+    // ─── Win conditions ───────────────────────────────────────────────────────
     const WINS = [
       [0,1,2],[3,4,5],[6,7,8],
       [0,3,6],[1,4,7],[2,5,8],
       [0,4,8],[2,4,6]
     ];
 
+    // ─── Characters ──────────────────────────────────────────────────────────
+    // Each character has a name, avatar, difficulty label, css class, description,
+    // and a getMoveIndex(board) function returning the cell index to play.
+    const CHARACTERS = [
+      {
+        id: 'randy',
+        name: 'Randy',
+        avatar: '🎲',
+        difficulty: 'Easy',
+        diffClass: 'diff-easy',
+        desc: 'Totally random. Pure chaos — anyone can beat him.',
+        getMove(board) {
+          const empty = getEmpty(board);
+          return empty[Math.floor(Math.random() * empty.length)];
+        }
+      },
+      {
+        id: 'cassie',
+        name: 'Cassie',
+        avatar: '🛡️',
+        difficulty: 'Medium',
+        diffClass: 'diff-medium',
+        desc: 'Defensive queen. She blocks every threat but rarely plans ahead.',
+        getMove(board) {
+          // Always block, sometimes win, otherwise pick center/corner/random
+          const win = findWinningMove(board, 'O');
+          if (win !== -1) return win;
+          const block = findWinningMove(board, 'X');
+          if (block !== -1) return block;
+          // Prefers edge cells (weak positional play)
+          const edges = [1,3,5,7].filter(i => board[i] === null);
+          if (edges.length) return edges[Math.floor(Math.random() * edges.length)];
+          return randomEmpty(board);
+        }
+      },
+      {
+        id: 'oscar',
+        name: 'Oscar',
+        avatar: '⚔️',
+        difficulty: 'Medium',
+        diffClass: 'diff-medium',
+        desc: 'Pure aggression. Goes for the win first, but often forgets to block.',
+        getMove(board) {
+          // Tries to win, skips blocking 60% of the time, then corners
+          const win = findWinningMove(board, 'O');
+          if (win !== -1) return win;
+          // Only blocks 40% of the time
+          if (Math.random() < 0.4) {
+            const block = findWinningMove(board, 'X');
+            if (block !== -1) return block;
+          }
+          // Prefers corners aggressively
+          const corners = [0,2,6,8].filter(i => board[i] === null);
+          if (corners.length) return corners[Math.floor(Math.random() * corners.length)];
+          return randomEmpty(board);
+        }
+      },
+      {
+        id: 'eva',
+        name: 'Eva',
+        avatar: '🧠',
+        difficulty: 'Hard',
+        diffClass: 'diff-hard',
+        desc: 'Strategic and sharp. Uses minimax but makes one slip-up per game.',
+        getMove(board) {
+          // 85% optimal minimax, 15% smart-ish random (takes win/block or corner)
+          if (Math.random() < 0.15) {
+            const win = findWinningMove(board, 'O');
+            if (win !== -1) return win;
+            const block = findWinningMove(board, 'X');
+            if (block !== -1) return block;
+            const corners = [0,2,6,8].filter(i => board[i] === null);
+            if (corners.length) return corners[Math.floor(Math.random() * corners.length)];
+            return randomEmpty(board);
+          }
+          return minimax(board.slice(), 'O', -Infinity, Infinity).index;
+        }
+      },
+      {
+        id: 'max',
+        name: 'MAX-9',
+        avatar: '🤖',
+        difficulty: 'Unbeatable',
+        diffClass: 'diff-unbeatable',
+        desc: 'Cold logic. Perfect play every time. You cannot win.',
+        getMove(board) {
+          return minimax(board.slice(), 'O', -Infinity, Infinity).index;
+        }
+      }
+    ];
+
+    // ─── State ────────────────────────────────────────────────────────────────
     let board = Array(9).fill(null);
     let current = 'X';
     let over = false;
     let vsComputer = false;
+    let selectedChar = CHARACTERS[0];
     let scores = { X: 0, O: 0, D: 0 };
 
     const cells = document.querySelectorAll('.cell');
     const status = document.getElementById('status');
-    const difficultySelect = document.getElementById('difficulty');
 
-    // Mode toggle
+    // ─── Build character grid ─────────────────────────────────────────────────
+    const charGrid = document.getElementById('character-grid');
+    CHARACTERS.forEach(char => {
+      const card = document.createElement('div');
+      card.className = 'char-card' + (char.id === selectedChar.id ? ' selected' : '');
+      card.dataset.id = char.id;
+      card.innerHTML = `
+        <div class="char-avatar">${char.avatar}</div>
+        <div class="char-name">${char.name}</div>
+        <div class="char-diff ${char.diffClass}">${char.difficulty}</div>
+      `;
+      card.addEventListener('click', () => selectCharacter(char));
+      charGrid.appendChild(card);
+    });
+
+    function selectCharacter(char) {
+      selectedChar = char;
+      document.querySelectorAll('.char-card').forEach(c => {
+        c.classList.toggle('selected', c.dataset.id === char.id);
+      });
+      resetGame();
+    }
+
+    function updateBanner() {
+      const banner = document.getElementById('active-char-banner');
+      if (!vsComputer) { banner.style.display = 'none'; return; }
+      banner.style.display = 'flex';
+      document.getElementById('banner-avatar').textContent = selectedChar.avatar;
+      document.getElementById('banner-name').textContent = selectedChar.name;
+      document.getElementById('banner-desc').textContent = selectedChar.desc;
+      const diffEl = document.getElementById('banner-diff-label');
+      diffEl.textContent = selectedChar.difficulty;
+      diffEl.className = 'banner-diff ' + selectedChar.diffClass;
+    }
+
+    // ─── Mode toggle ──────────────────────────────────────────────────────────
     document.getElementById('btn-2p').addEventListener('click', () => setMode(false));
     document.getElementById('btn-cpu').addEventListener('click', () => setMode(true));
 
@@ -214,25 +432,29 @@
       vsComputer = cpu;
       document.getElementById('btn-2p').classList.toggle('active', !cpu);
       document.getElementById('btn-cpu').classList.toggle('active', cpu);
-      difficultySelect.style.display = cpu ? 'inline-block' : 'none';
+      document.getElementById('character-picker').style.display = cpu ? 'flex' : 'none';
+      // Update scoreboard labels
+      document.querySelector('.score.x-score').childNodes[0].textContent = cpu ? 'You ' : 'X ';
+      document.querySelector('.score.o-score').childNodes[0].textContent = cpu ? 'CPU ' : 'O ';
+      updateBanner();
       resetGame();
     }
 
+    // ─── Cell clicks ──────────────────────────────────────────────────────────
     cells.forEach(cell => cell.addEventListener('click', () => {
       const i = +cell.dataset.i;
       if (over || board[i]) return;
-      if (vsComputer && current === 'O') return; // block clicks during CPU turn
+      if (vsComputer && current === 'O') return;
 
       placeMove(i, current);
 
       if (!over && vsComputer && current === 'O') {
-        // Disable board while computer "thinks"
         cells.forEach(c => c.style.pointerEvents = 'none');
         setTimeout(() => {
-          const move = getComputerMove();
-          if (move !== -1) placeMove(move, 'O');
+          const move = selectedChar.getMove(board);
+          if (move !== undefined && move !== -1) placeMove(move, 'O');
           cells.forEach(c => c.style.pointerEvents = '');
-        }, 300);
+        }, 350);
       }
     }));
 
@@ -244,7 +466,12 @@
       const winLine = checkWin(player);
       if (winLine) {
         winLine.forEach(idx => cells[idx].classList.add('win'));
-        const label = vsComputer && player === 'O' ? 'Computer wins!' : `${player} wins!`;
+        let label;
+        if (vsComputer) {
+          label = player === 'X' ? 'You win!' : `${selectedChar.name} wins!`;
+        } else {
+          label = `${player} wins!`;
+        }
         status.textContent = label;
         scores[player]++;
         updateScores();
@@ -257,7 +484,7 @@
       } else {
         current = player === 'X' ? 'O' : 'X';
         if (vsComputer) {
-          status.textContent = current === 'X' ? "Your turn" : "Computer thinking…";
+          status.textContent = current === 'X' ? "Your turn" : `${selectedChar.name} is thinking…`;
         } else {
           status.textContent = `${current}'s turn`;
         }
@@ -274,35 +501,22 @@
       document.getElementById('score-d').textContent = scores.D;
     }
 
-    // --- AI ---
-
-    function getComputerMove() {
-      const empty = board.map((v, i) => v === null ? i : -1).filter(i => i !== -1);
-      if (empty.length === 0) return -1;
-
-      if (difficultySelect.value === 'easy') {
-        // 70% random, 30% smart (takes win or blocks)
-        const smart = getSmartMove();
-        if (smart !== -1 && Math.random() < 0.3) return smart;
-        return empty[Math.floor(Math.random() * empty.length)];
-      }
-
-      // Hard: minimax
-      return minimax(board, 'O', -Infinity, Infinity).index;
+    // ─── AI helpers ───────────────────────────────────────────────────────────
+    function getEmpty(b) {
+      return b.map((v, i) => v === null ? i : -1).filter(i => i !== -1);
     }
 
-    function getSmartMove() {
-      // Win if possible
-      for (const i of board.map((v, i) => v === null ? i : -1).filter(i => i !== -1)) {
-        board[i] = 'O';
-        if (checkWin('O')) { board[i] = null; return i; }
-        board[i] = null;
-      }
-      // Block player from winning
-      for (const i of board.map((v, i) => v === null ? i : -1).filter(i => i !== -1)) {
-        board[i] = 'X';
-        if (checkWin('X')) { board[i] = null; return i; }
-        board[i] = null;
+    function randomEmpty(b) {
+      const e = getEmpty(b);
+      return e[Math.floor(Math.random() * e.length)];
+    }
+
+    function findWinningMove(b, player) {
+      for (const i of getEmpty(b)) {
+        b[i] = player;
+        const wins = WINS.some(line => line.every(j => b[j] === player));
+        b[i] = null;
+        if (wins) return i;
       }
       return -1;
     }
@@ -312,7 +526,7 @@
       const oWin = WINS.find(line => line.every(i => b[i] === 'O'));
       if (oWin) return { score: 10 };
       if (xWin) return { score: -10 };
-      const empty = b.map((v, i) => v === null ? i : -1).filter(i => i !== -1);
+      const empty = getEmpty(b);
       if (empty.length === 0) return { score: 0 };
 
       let best = player === 'O'
@@ -337,8 +551,7 @@
       return best;
     }
 
-    // --- Reset ---
-
+    // ─── Reset ────────────────────────────────────────────────────────────────
     function resetGame() {
       board = Array(9).fill(null);
       current = 'X';
