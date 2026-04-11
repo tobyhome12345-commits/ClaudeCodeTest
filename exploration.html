@@ -8,143 +8,51 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: #0d0d1a;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      height: 100vh; overflow: hidden;
       font-family: 'Segoe UI', system-ui, sans-serif;
     }
-    canvas {
-      display: block;
-      image-rendering: pixelated;
-    }
+    canvas { display: block; image-rendering: pixelated; }
     #hub-btn {
-      position: fixed;
-      top: 14px;
-      left: 14px;
-      background: rgba(13,13,26,0.85);
-      color: #a8dadc;
-      border: 1px solid #1a3a6a;
-      border-radius: 20px;
-      padding: 0.4rem 1rem;
-      font-size: 0.8rem;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      text-decoration: none;
-      cursor: pointer;
+      position: fixed; top: 14px; left: 14px;
+      background: rgba(13,13,26,0.85); color: #a8dadc;
+      border: 1px solid #1a3a6a; border-radius: 20px;
+      padding: 0.4rem 1rem; font-size: 0.8rem; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+      text-decoration: none; cursor: pointer; z-index: 10;
       transition: border-color 0.2s, color 0.2s;
-      z-index: 10;
     }
     #hub-btn:hover { border-color: #a8dadc; color: #fff; }
+    #interact-prompt {
+      position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.72); color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 24px; padding: 7px 20px;
+      font-size: 0.82rem; letter-spacing: 1.5px; text-transform: uppercase;
+      pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 10;
+    }
+    #interact-prompt.show { opacity: 1; }
   </style>
 </head>
 <body>
-
 <a id="hub-btn" href="index.html">&#8592; Hub</a>
+<div id="interact-prompt" id="prompt"></div>
 <canvas id="canvas"></canvas>
 
 <script>
 // ─── Constants ───────────────────────────────────────────────────────────────
-const TILE        = 32;          // pixels per tile
-const MAP_COLS    = 60;
-const MAP_ROWS    = 60;
-const PLAYER_SIZE = 20;          // pixel diameter of the player circle
-const PLAYER_SPEED = 160;        // pixels per second
+const TILE         = 32;
+const MAP_COLS     = 80;
+const MAP_ROWS     = 80;
+const PLAYER_R     = 10;
+const PLAYER_SPEED = 180;
+const WALL_T       = 9;
+const DOOR_W       = TILE;
+const INTERACT_DIST = 52;
 
-// Grass tile variants — indices used to pick colours
-const GRASS_BASE    = '#4a7c3f';
-const GRASS_LIGHT   = '#5a9449';
-const GRASS_DARK    = '#3a6332';
-const GRASS_PATCH   = '#3d6b35';
-
-// ─── Canvas setup ────────────────────────────────────────────────────────────
-const canvas = document.getElementById('canvas');
-const ctx    = canvas.getContext('2d');
-
-function resize() {
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-resize();
-window.addEventListener('resize', resize);
-
-// ─── Map generation ──────────────────────────────────────────────────────────
-// Each cell stores a variant 0-3 for grass shading variety
-const map = [];
-for (let r = 0; r < MAP_ROWS; r++) {
-  map[r] = [];
-  for (let c = 0; c < MAP_COLS; c++) {
-    map[r][c] = Math.floor(Math.random() * 4);
-  }
-}
-
-// Pre-build a noise-like blotch pattern using simple random-walk seed blobs
-(function stampPatches() {
-  const patches = 120;
-  for (let p = 0; p < patches; p++) {
-    const cr = Math.floor(Math.random() * MAP_ROWS);
-    const cc = Math.floor(Math.random() * MAP_COLS);
-    const size = 2 + Math.floor(Math.random() * 4);
-    const variant = Math.floor(Math.random() * 4);
-    for (let dr = -size; dr <= size; dr++) {
-      for (let dc = -size; dc <= size; dc++) {
-        if (dr * dr + dc * dc <= size * size) {
-          const nr = cr + dr, nc = cc + dc;
-          if (nr >= 0 && nr < MAP_ROWS && nc >= 0 && nc < MAP_COLS) {
-            map[nr][nc] = variant;
-          }
-        }
-      }
-    }
-  }
-})();
-
-const TILE_COLORS = [GRASS_BASE, GRASS_LIGHT, GRASS_DARK, GRASS_PATCH];
-
-// ─── Pre-render the map to an offscreen canvas ───────────────────────────────
-const mapCanvas = document.createElement('canvas');
-mapCanvas.width  = MAP_COLS * TILE;
-mapCanvas.height = MAP_ROWS * TILE;
-const mctx = mapCanvas.getContext('2d');
-
-(function drawMap() {
-  for (let r = 0; r < MAP_ROWS; r++) {
-    for (let c = 0; c < MAP_COLS; c++) {
-      mctx.fillStyle = TILE_COLORS[map[r][c]];
-      mctx.fillRect(c * TILE, r * TILE, TILE, TILE);
-
-      // subtle grid lines
-      mctx.strokeStyle = 'rgba(0,0,0,0.08)';
-      mctx.lineWidth = 0.5;
-      mctx.strokeRect(c * TILE, r * TILE, TILE, TILE);
-    }
-  }
-
-  // Scatter small grass detail sprites
-  const rng = mulberry32(42);
-  for (let i = 0; i < 800; i++) {
-    const x = rng() * MAP_COLS * TILE;
-    const y = rng() * MAP_ROWS * TILE;
-    drawGrassDetail(mctx, x, y, rng);
-  }
-})();
-
-function drawGrassDetail(ctx2, x, y, rng) {
-  const h = 5 + rng() * 6;
-  const lean = (rng() - 0.5) * 4;
-  ctx2.strokeStyle = rng() > 0.5 ? '#2e5227' : '#6aab5a';
-  ctx2.lineWidth = 1;
-  ctx2.beginPath();
-  ctx2.moveTo(x, y);
-  ctx2.lineTo(x + lean, y - h);
-  ctx2.stroke();
-}
-
-// Simple seeded RNG so details are deterministic
+// ─── Seeded RNG ──────────────────────────────────────────────────────────────
 function mulberry32(seed) {
-  return function() {
+  return function () {
     seed |= 0; seed = seed + 0x6D2B79F5 | 0;
     let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
@@ -152,152 +60,454 @@ function mulberry32(seed) {
   };
 }
 
+// ─── Canvas ──────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+resize();
+window.addEventListener('resize', resize);
+
+// ─── Grass map ───────────────────────────────────────────────────────────────
+const GRASS_COLORS = ['#4a7c3f','#5a9449','#3a6332','#3d6b35'];
+const map = Array.from({ length: MAP_ROWS }, () =>
+  Array.from({ length: MAP_COLS }, () => Math.floor(Math.random() * 4))
+);
+// Blob patches for variety
+(function () {
+  for (let p = 0; p < 200; p++) {
+    const cr = Math.floor(Math.random() * MAP_ROWS);
+    const cc = Math.floor(Math.random() * MAP_COLS);
+    const sz = 2 + Math.floor(Math.random() * 5);
+    const v  = Math.floor(Math.random() * 4);
+    for (let dr = -sz; dr <= sz; dr++)
+      for (let dc = -sz; dc <= sz; dc++)
+        if (dr*dr+dc*dc <= sz*sz) {
+          const nr = cr+dr, nc = cc+dc;
+          if (nr >= 0 && nr < MAP_ROWS && nc >= 0 && nc < MAP_COLS) map[nr][nc] = v;
+        }
+  }
+})();
+
+// Pre-render grass to offscreen canvas
+const mapCanvas = document.createElement('canvas');
+mapCanvas.width  = MAP_COLS * TILE;
+mapCanvas.height = MAP_ROWS * TILE;
+const mctx = mapCanvas.getContext('2d');
+(function () {
+  for (let r = 0; r < MAP_ROWS; r++)
+    for (let c = 0; c < MAP_COLS; c++) {
+      mctx.fillStyle = GRASS_COLORS[map[r][c]];
+      mctx.fillRect(c*TILE, r*TILE, TILE, TILE);
+      mctx.strokeStyle = 'rgba(0,0,0,0.07)';
+      mctx.lineWidth = 0.5;
+      mctx.strokeRect(c*TILE, r*TILE, TILE, TILE);
+    }
+  const rng = mulberry32(77);
+  for (let i = 0; i < 1200; i++) {
+    const x = rng() * MAP_COLS * TILE;
+    const y = rng() * MAP_ROWS * TILE;
+    const h = 4 + rng() * 7;
+    const lean = (rng() - 0.5) * 5;
+    mctx.strokeStyle = rng() > 0.5 ? '#2e5227' : '#6aab5a';
+    mctx.lineWidth = 1;
+    mctx.beginPath(); mctx.moveTo(x, y); mctx.lineTo(x + lean, y - h); mctx.stroke();
+  }
+})();
+
+// ─── Houses ──────────────────────────────────────────────────────────────────
+// Each house: 4×3 tiles. Door centred in south wall.
+// wallColor, roofColor vary per house.
+const HOUSE_DEFS = [
+  { tx:  5, ty:  5, wallColor: '#c9935a', roofColor: '#7a3b1e' },
+  { tx: 48, ty:  6, wallColor: '#b8a070', roofColor: '#5c3b18' },
+  { tx:  6, ty: 50, wallColor: '#c4a882', roofColor: '#6b3d1a' },
+  { tx: 50, ty: 50, wallColor: '#b09060', roofColor: '#4e2e10' },
+  { tx: 36, ty: 10, wallColor: '#d4a96a', roofColor: '#8a4820' },
+  { tx: 10, ty: 36, wallColor: '#bf9355', roofColor: '#6e3a16' },
+];
+
+const houses = HOUSE_DEFS.map(d => ({
+  x: d.tx * TILE,
+  y: d.ty * TILE,
+  w: 4 * TILE,
+  h: 3 * TILE,
+  wallColor: d.wallColor,
+  roofColor: d.roofColor,
+  doorOpen: false,
+}));
+
+// Wall rects for a house (for collision)
+function getHouseWalls(house) {
+  const { x, y, w, h, doorOpen } = house;
+  const ds = w / 2 - DOOR_W / 2;   // door left offset from house left
+  const rects = [
+    { x,           y,           w,              h: WALL_T },  // north
+    { x,           y,           w: WALL_T,      h          },  // west
+    { x: x+w-WALL_T, y,         w: WALL_T,      h          },  // east
+    { x,           y: y+h-WALL_T, w: ds,         h: WALL_T },  // south-left
+    { x: x+ds+DOOR_W, y: y+h-WALL_T, w: w-ds-DOOR_W, h: WALL_T }, // south-right
+  ];
+  if (!doorOpen) rects.push({ x: x+ds, y: y+h-WALL_T, w: DOOR_W, h: WALL_T });
+  return rects;
+}
+
+// Door world position (centre of opening, south face)
+function doorCenter(house) {
+  return { x: house.x + house.w / 2, y: house.y + house.h };
+}
+
+// ─── Farms ───────────────────────────────────────────────────────────────────
+// Each farm is a fenced 8×6 tile area with 3 crop rows inside.
+const FARM_DEFS = [
+  { tx: 13, ty:  8 },
+  { tx: 20, ty: 28 },
+  { tx: 42, ty: 20 },
+  { tx: 28, ty: 46 },
+  { tx: 55, ty: 30 },
+];
+
+const farms = FARM_DEFS.map(d => ({
+  x: d.tx * TILE,
+  y: d.ty * TILE,
+  w: 8 * TILE,
+  h: 6 * TILE,
+}));
+
+// ─── Draw helpers ────────────────────────────────────────────────────────────
+function drawFarm(ctx2, farm) {
+  const { x, y, w, h } = farm;
+  const pad = TILE;  // inner padding inside fence
+
+  // Soil background (inside fence)
+  ctx2.fillStyle = '#6b4226';
+  ctx2.fillRect(x + pad, y + pad, w - pad*2, h - pad*2);
+
+  // Crop rows (3 rows of plants)
+  const innerX = x + pad + 8;
+  const innerW = w - pad*2 - 16;
+  const rowY = [y + pad + 14, y + pad + (h - pad*2)/2 - 6, y + h - pad - 22];
+  for (const ry of rowY) {
+    // dirt strip for this row
+    ctx2.fillStyle = '#7a4e2c';
+    ctx2.fillRect(innerX, ry - 4, innerW, 18);
+    // plants
+    for (let px = innerX + 8; px < innerX + innerW - 8; px += 18) {
+      drawCrop(ctx2, px, ry + 5);
+    }
+  }
+
+  // Fence posts & rails
+  const postColor = '#8B5E3C';
+  const railColor = '#a07040';
+  const postW = 6, postH = 14;
+
+  // Draw all four fence lines (top, bottom, left, right)
+  // Top & Bottom rails
+  for (const fy of [y + 4, y + h - postH]) {
+    ctx2.fillStyle = railColor;
+    ctx2.fillRect(x + postW/2, fy + postH/2, w - postW, 4);
+  }
+  // Left & Right rails
+  for (const fx of [x + 4, x + w - postW]) {
+    ctx2.fillStyle = railColor;
+    ctx2.fillRect(fx + postW/2, y + postH/2, 4, h - postH);
+  }
+
+  // Posts — every 2 tiles along perimeter
+  const postSpacingX = 2 * TILE;
+  const postSpacingY = 2 * TILE;
+  for (let px = x; px <= x + w; px += postSpacingX) {
+    ctx2.fillStyle = postColor;
+    ctx2.fillRect(px - postW/2, y,     postW, postH);
+    ctx2.fillRect(px - postW/2, y+h-postH, postW, postH);
+  }
+  for (let py = y + postSpacingY; py < y + h; py += postSpacingY) {
+    ctx2.fillStyle = postColor;
+    ctx2.fillRect(x - postW/2,     py - postH/2, postW, postH);
+    ctx2.fillRect(x+w - postW/2,   py - postH/2, postW, postH);
+  }
+}
+
+function drawCrop(ctx2, x, y) {
+  // Small plant: stem + two leaves
+  ctx2.strokeStyle = '#3a8c2a';
+  ctx2.lineWidth = 1.5;
+  ctx2.beginPath(); ctx2.moveTo(x, y); ctx2.lineTo(x, y - 10); ctx2.stroke();
+  ctx2.strokeStyle = '#55b040';
+  ctx2.lineWidth = 1;
+  ctx2.beginPath(); ctx2.moveTo(x, y - 5); ctx2.lineTo(x - 5, y - 9); ctx2.stroke();
+  ctx2.beginPath(); ctx2.moveTo(x, y - 5); ctx2.lineTo(x + 5, y - 9); ctx2.stroke();
+}
+
+function drawHouseFloor(ctx2, house) {
+  const { x, y, w, h } = house;
+  // Interior floor (wood planks feel)
+  ctx2.fillStyle = '#c8a86a';
+  ctx2.fillRect(x + WALL_T, y + WALL_T, w - WALL_T*2, h - WALL_T*2);
+  // plank lines
+  ctx2.strokeStyle = 'rgba(0,0,0,0.1)';
+  ctx2.lineWidth = 1;
+  for (let ly = y + WALL_T + 12; ly < y + h - WALL_T; ly += 12) {
+    ctx2.beginPath(); ctx2.moveTo(x + WALL_T, ly); ctx2.lineTo(x + w - WALL_T, ly); ctx2.stroke();
+  }
+}
+
+function drawHouseWalls(ctx2, house) {
+  const { x, y, w, h, wallColor, roofColor, doorOpen } = house;
+  const ds = w / 2 - DOOR_W / 2;
+
+  // Shadow
+  ctx2.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx2.fillRect(x + 6, y + 6, w, h);
+
+  // Wall panels
+  ctx2.fillStyle = wallColor;
+  ctx2.fillRect(x, y, w, WALL_T);                          // north
+  ctx2.fillRect(x, y, WALL_T, h);                          // west
+  ctx2.fillRect(x + w - WALL_T, y, WALL_T, h);             // east
+  ctx2.fillRect(x, y + h - WALL_T, ds, WALL_T);            // south-left
+  ctx2.fillRect(x + ds + DOOR_W, y + h - WALL_T, w - ds - DOOR_W, WALL_T); // south-right
+
+  // Door frame (always drawn)
+  ctx2.strokeStyle = roofColor;
+  ctx2.lineWidth = 2;
+  ctx2.strokeRect(x + ds - 2, y + h - WALL_T - TILE, DOOR_W + 4, TILE + WALL_T);
+
+  // Door panel
+  if (!doorOpen) {
+    ctx2.fillStyle = roofColor;
+    ctx2.fillRect(x + ds, y + h - WALL_T - TILE + 2, DOOR_W, TILE - 2);
+    // Door knob
+    ctx2.fillStyle = '#f0c040';
+    ctx2.beginPath();
+    ctx2.arc(x + ds + DOOR_W - 7, y + h - WALL_T - TILE/2, 3, 0, Math.PI*2);
+    ctx2.fill();
+  } else {
+    // Door open — draw it folded to the side
+    ctx2.fillStyle = roofColor;
+    ctx2.fillRect(x + ds - WALL_T - TILE + 2, y + h - WALL_T - TILE + 2, TILE - 2, TILE - 2);
+    ctx2.fillStyle = '#f0c040';
+    ctx2.beginPath();
+    ctx2.arc(x + ds - WALL_T - 4, y + h - WALL_T - TILE/2, 3, 0, Math.PI*2);
+    ctx2.fill();
+  }
+
+  // Windows (two, one on each side)
+  const winY = y + TILE * 0.6;
+  const winW = TILE * 0.55, winH = TILE * 0.5;
+  for (const wx of [x + WALL_T + 6, x + w - WALL_T - 6 - winW]) {
+    ctx2.fillStyle = '#b8d8f0';
+    ctx2.fillRect(wx, winY, winW, winH);
+    ctx2.strokeStyle = wallColor;
+    ctx2.lineWidth = 2;
+    ctx2.strokeRect(wx, winY, winW, winH);
+    // cross pane
+    ctx2.strokeStyle = 'rgba(0,0,0,0.15)';
+    ctx2.lineWidth = 1;
+    ctx2.beginPath();
+    ctx2.moveTo(wx + winW/2, winY); ctx2.lineTo(wx + winW/2, winY + winH);
+    ctx2.moveTo(wx, winY + winH/2); ctx2.lineTo(wx + winW, winY + winH/2);
+    ctx2.stroke();
+  }
+
+  // Roof (triangular overhang above north wall)
+  const roofOverhang = 8;
+  ctx2.fillStyle = roofColor;
+  ctx2.beginPath();
+  ctx2.moveTo(x - roofOverhang, y);
+  ctx2.lineTo(x + w/2, y - TILE * 0.9);
+  ctx2.lineTo(x + w + roofOverhang, y);
+  ctx2.closePath();
+  ctx2.fill();
+  // roof ridge
+  ctx2.strokeStyle = 'rgba(0,0,0,0.2)';
+  ctx2.lineWidth = 2;
+  ctx2.stroke();
+
+  // Wall outline
+  ctx2.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx2.lineWidth = 1;
+  ctx2.strokeRect(x, y, w, h);
+}
+
 // ─── Player ──────────────────────────────────────────────────────────────────
 const player = {
   x: (MAP_COLS / 2) * TILE,
   y: (MAP_ROWS / 2) * TILE,
-  facing: 0,   // radians, 0 = right
+  facing: 0,
 };
+
+function drawPlayer(ctx2, x, y, facing) {
+  const r = PLAYER_R;
+  // Shadow
+  ctx2.save();
+  ctx2.globalAlpha = 0.22;
+  ctx2.fillStyle = '#000';
+  ctx2.beginPath();
+  ctx2.ellipse(x, y + r * 0.8, r * 0.7, r * 0.22, 0, 0, Math.PI*2);
+  ctx2.fill();
+  ctx2.restore();
+  // Body
+  ctx2.beginPath();
+  ctx2.arc(x, y, r, 0, Math.PI*2);
+  const g = ctx2.createRadialGradient(x - r*0.3, y - r*0.3, 1, x, y, r);
+  g.addColorStop(0, '#6ec6f5');
+  g.addColorStop(1, '#2277bb');
+  ctx2.fillStyle = g;
+  ctx2.fill();
+  ctx2.strokeStyle = '#aaddff';
+  ctx2.lineWidth = 1.5;
+  ctx2.stroke();
+  // Facing dot
+  ctx2.beginPath();
+  ctx2.arc(x + Math.cos(facing)*r*0.6, y + Math.sin(facing)*r*0.6, 3, 0, Math.PI*2);
+  ctx2.fillStyle = '#fff';
+  ctx2.fill();
+}
+
+// ─── Collision helpers ───────────────────────────────────────────────────────
+function resolveCircleRect(px, py, rect) {
+  const nearX = Math.max(rect.x, Math.min(px, rect.x + rect.w));
+  const nearY = Math.max(rect.y, Math.min(py, rect.y + rect.h));
+  const dx = px - nearX, dy = py - nearY;
+  const dist2 = dx*dx + dy*dy;
+  if (dist2 < PLAYER_R * PLAYER_R) {
+    const dist = Math.sqrt(dist2);
+    if (dist === 0) return { x: px, y: py - PLAYER_R }; // fallback
+    const push = PLAYER_R - dist;
+    return { x: px + (dx/dist)*push, y: py + (dy/dist)*push };
+  }
+  return null;
+}
 
 // ─── Input ───────────────────────────────────────────────────────────────────
 const keys = {};
-window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
-window.addEventListener('keyup',   e => { keys[e.key.toLowerCase()] = false; });
+let eJustPressed = false;
+window.addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  if (e.key.toLowerCase() === 'e') eJustPressed = true;
+});
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
 // ─── Camera ──────────────────────────────────────────────────────────────────
 const cam = { x: player.x, y: player.y };
 
-// ─── Game loop ───────────────────────────────────────────────────────────────
-let lastTime = 0;
+// ─── Minimap ─────────────────────────────────────────────────────────────────
+function drawMinimap(W, H) {
+  const mmW = 130, mmH = 130;
+  const mmX = W - mmW - 14, mmY = H - mmH - 14;
+  const sx = mmW / (MAP_COLS * TILE), sy = mmH / (MAP_ROWS * TILE);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.beginPath(); ctx.roundRect(mmX-4, mmY-4, mmW+8, mmH+8, 6); ctx.fill();
+  ctx.drawImage(mapCanvas, mmX, mmY, mmW, mmH);
+
+  // Farms on minimap (green tint)
+  ctx.fillStyle = 'rgba(80,160,60,0.5)';
+  for (const f of farms) ctx.fillRect(mmX + f.x*sx, mmY + f.y*sy, f.w*sx, f.h*sy);
+
+  // Houses on minimap
+  ctx.fillStyle = '#c9935a';
+  for (const h of houses) ctx.fillRect(mmX + h.x*sx, mmY + h.y*sy, h.w*sx, h.h*sy);
+
+  // Player dot
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(mmX + player.x*sx, mmY + player.y*sy, 3, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#1a3a6a'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.roundRect(mmX-4, mmY-4, mmW+8, mmH+8, 6); ctx.stroke();
+}
+
+// ─── Update ──────────────────────────────────────────────────────────────────
+const promptEl = document.getElementById('interact-prompt');
 
 function update(dt) {
+  // Movement
   let dx = 0, dy = 0;
   if (keys['w'] || keys['arrowup'])    dy -= 1;
   if (keys['s'] || keys['arrowdown'])  dy += 1;
   if (keys['a'] || keys['arrowleft'])  dx -= 1;
   if (keys['d'] || keys['arrowright']) dx += 1;
-
   if (dx !== 0 || dy !== 0) {
-    // Normalise diagonal movement
-    const len = Math.sqrt(dx * dx + dy * dy);
+    const len = Math.sqrt(dx*dx + dy*dy);
     dx /= len; dy /= len;
-
     player.facing = Math.atan2(dy, dx);
-
-    const nx = player.x + dx * PLAYER_SPEED * dt;
-    const ny = player.y + dy * PLAYER_SPEED * dt;
-    const half = PLAYER_SIZE / 2;
-    const maxX = MAP_COLS * TILE - half;
-    const maxY = MAP_ROWS * TILE - half;
-
-    player.x = Math.max(half, Math.min(maxX, nx));
-    player.y = Math.max(half, Math.min(maxY, ny));
+    player.x += dx * PLAYER_SPEED * dt;
+    player.y += dy * PLAYER_SPEED * dt;
   }
 
-  // Smooth camera follow
+  // Clamp to map
+  const half = PLAYER_R;
+  player.x = Math.max(half, Math.min(MAP_COLS*TILE - half, player.x));
+  player.y = Math.max(half, Math.min(MAP_ROWS*TILE - half, player.y));
+
+  // Resolve house wall collisions
+  for (const house of houses) {
+    for (const rect of getHouseWalls(house)) {
+      const resolved = resolveCircleRect(player.x, player.y, rect);
+      if (resolved) { player.x = resolved.x; player.y = resolved.y; }
+    }
+  }
+
+  // Nearest door check for E interaction
+  let nearestHouse = null, nearestDist = Infinity;
+  for (const house of houses) {
+    const dc = doorCenter(house);
+    const dist = Math.hypot(player.x - dc.x, player.y - dc.y);
+    if (dist < nearestDist) { nearestDist = dist; nearestHouse = house; }
+  }
+
+  if (nearestDist < INTERACT_DIST) {
+    const label = nearestHouse.doorOpen ? '[E] Close door' : '[E] Open door';
+    promptEl.textContent = label;
+    promptEl.classList.add('show');
+    if (eJustPressed) nearestHouse.doorOpen = !nearestHouse.doorOpen;
+  } else {
+    promptEl.classList.remove('show');
+  }
+  eJustPressed = false;
+
+  // Camera smooth follow
   const lerp = 1 - Math.pow(0.01, dt);
   cam.x += (player.x - cam.x) * lerp;
   cam.y += (player.y - cam.y) * lerp;
 }
 
+// ─── Draw ────────────────────────────────────────────────────────────────────
 function draw() {
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
 
-  // Offset so camera is centred on screen
-  const offX = Math.round(W / 2 - cam.x);
-  const offY = Math.round(H / 2 - cam.y);
+  const offX = Math.round(W/2 - cam.x);
+  const offY = Math.round(H/2 - cam.y);
 
   ctx.save();
   ctx.translate(offX, offY);
 
-  // Clamp visible map region for performance
-  const startC = Math.max(0, Math.floor(-offX / TILE) - 1);
-  const startR = Math.max(0, Math.floor(-offY / TILE) - 1);
-  const endC   = Math.min(MAP_COLS, startC + Math.ceil(W / TILE) + 2);
-  const endR   = Math.min(MAP_ROWS, startR + Math.ceil(H / TILE) + 2);
+  // Grass
+  ctx.drawImage(mapCanvas, 0, 0);
 
-  // Draw the pre-rendered map (only the visible slice)
-  ctx.drawImage(
-    mapCanvas,
-    startC * TILE, startR * TILE,
-    (endC - startC) * TILE, (endR - startR) * TILE,
-    startC * TILE, startR * TILE,
-    (endC - startC) * TILE, (endR - startR) * TILE
-  );
+  // Farms (drawn over grass)
+  for (const farm of farms) drawFarm(ctx, farm);
 
-  // Player shadow
-  ctx.save();
-  ctx.globalAlpha = 0.25;
-  ctx.fillStyle = '#000';
-  ctx.beginPath();
-  ctx.ellipse(player.x, player.y + PLAYER_SIZE * 0.45, PLAYER_SIZE * 0.45, PLAYER_SIZE * 0.18, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+  // House floors (drawn before player)
+  for (const house of houses) drawHouseFloor(ctx, house);
 
-  // Player body
+  // Player
   drawPlayer(ctx, player.x, player.y, player.facing);
 
+  // House walls (drawn AFTER player so walls appear on top for depth)
+  for (const house of houses) drawHouseWalls(ctx, house);
+
   ctx.restore();
 
-  // HUD — mini-map
   drawMinimap(W, H);
 }
 
-function drawPlayer(ctx2, x, y, facing) {
-  const r = PLAYER_SIZE / 2;
-
-  // Body circle
-  ctx2.beginPath();
-  ctx2.arc(x, y, r, 0, Math.PI * 2);
-  const grad = ctx2.createRadialGradient(x - r * 0.3, y - r * 0.3, 1, x, y, r);
-  grad.addColorStop(0, '#6ec6f5');
-  grad.addColorStop(1, '#2277bb');
-  ctx2.fillStyle = grad;
-  ctx2.fill();
-  ctx2.strokeStyle = '#aaddff';
-  ctx2.lineWidth = 1.5;
-  ctx2.stroke();
-
-  // Direction indicator (small dot)
-  const dotDist = r * 0.6;
-  const dotX = x + Math.cos(facing) * dotDist;
-  const dotY = y + Math.sin(facing) * dotDist;
-  ctx2.beginPath();
-  ctx2.arc(dotX, dotY, 3, 0, Math.PI * 2);
-  ctx2.fillStyle = '#fff';
-  ctx2.fill();
-}
-
-function drawMinimap(W, H) {
-  const mmW = 120, mmH = 120;
-  const mmX = W - mmW - 14, mmY = H - mmH - 14;
-  const scaleX = mmW / (MAP_COLS * TILE);
-  const scaleY = mmH / (MAP_ROWS * TILE);
-
-  // Background
-  ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.beginPath();
-  ctx.roundRect(mmX - 4, mmY - 4, mmW + 8, mmH + 8, 6);
-  ctx.fill();
-
-  // Map surface
-  ctx.drawImage(mapCanvas, mmX, mmY, mmW, mmH);
-
-  // Player dot
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.arc(mmX + player.x * scaleX, mmY + player.y * scaleY, 3, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Border
-  ctx.strokeStyle = '#1a3a6a';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.roundRect(mmX - 4, mmY - 4, mmW + 8, mmH + 8, 6);
-  ctx.stroke();
-}
-
+// ─── Loop ────────────────────────────────────────────────────────────────────
+let lastTime = 0;
 function loop(ts) {
   const dt = Math.min((ts - lastTime) / 1000, 0.1);
   lastTime = ts;
@@ -305,9 +515,7 @@ function loop(ts) {
   draw();
   requestAnimationFrame(loop);
 }
-
 requestAnimationFrame(ts => { lastTime = ts; requestAnimationFrame(loop); });
 </script>
-
 </body>
 </html>
