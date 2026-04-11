@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Explorer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; width: 100vw; height: 100vh; }
+    canvas { display: block; cursor: none; }
+
+    #overlay {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center; gap: 12px;
+      background: rgba(0,0,0,0.72);
+      color: #e8d5b0; font-family: monospace; font-size: 16px; z-index: 10;
+    }
+    #overlay h1 { font-size: 36px; letter-spacing: 4px; margin-bottom: 8px; color: #fff; }
+    #overlay .hint { font-size: 13px; color: #aaa; margin-top: 16px; }
+    #overlay .controls { font-size: 13px; color: #c8c8c8; line-height: 2; text-align: center; }
+    #overlay.hidden { display: none; }
+
+    #crosshair {
+      position: fixed; top: 50%; left: 50%;
+      width: 10px; height: 10px;
+      border: 2px solid rgba(255,255,255,0.75); border-radius: 50%;
+      transform: translate(-50%,-50%);
+      pointer-events: none; z-index: 5; display: none;
+    }
+    #hud {
+      position: fixed; top: 16px; left: 16px;
+      color: #e8d5b0; font-family: monospace; font-size: 13px; line-height: 1.8;
+      z-index: 5; pointer-events: none;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+<div id="crosshair"></div>
+<div id="hud"></div>
+<div id="overlay">
+  <h1>EXPLORER</h1>
+  <div class="controls">
+    WASD &nbsp;&nbsp; Move / Swim<br>
+    SHIFT &nbsp; Sprint<br>
+    SPACE &nbsp; Jump<br>
+    E &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Open door<br>
+    MOUSE &nbsp; Look
+  </div>
+  <div class="hint">Click to explore &mdash; ESC to pause</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════
+const WALK_SPEED        = 6;
+const SPRINT_SPEED      = 14;
+const SWIM_SPEED        = 3;
+const JUMP_FORCE        = 9;
+const GRAVITY           = -22;
+const WATER_LEVEL       = 0;
+const BUOYANCY_K        = 14;   // spring strength toward water surface
+const WATER_DAMPING     = 0.87; // velocity multiplier per frame in water
+
+const CAM_DISTANCE      = 8;
+const CAM_PITCH_MIN     = 0.05; // near top-down
+const CAM_PITCH_MAX     = 1.65; // past horizontal — allows looking upward
+const CAM_HEIGHT_OFFSET = 1.6;
+const MOUSE_SENSITIVITY = 0.0025;
+
+const PLAYER_BODY_W     = 0.5;
+const PLAYER_BODY_H     = 1.0;
+const PLAYER_BODY_D     = 0.5;
+const PLAYER_BODY_COLOR = 0x4a90d9;
+const PLAYER_HEAD_COLOR = 0x2c5282;
+
+const BOB_FREQ          = 8;
+const BOB_AMPLITUDE     = 0.06;
+const SPRINT_BOB_MULT   = 1.6;
+
+const GROUND_SIZE       = 200;
+const GROUND_SEGS       = 100;
+const GROUND_COLOR      = 0x3a8a3a;
+const WATER_COLOR       = 0x1a6ea0;
+
+const VILLAGE_FLOOR     = 1.55; // flat Y height of village centre
+const VILLAGE_RADIUS    = 20;   // blend radius for terrain flattening
+
+const TREE_COUNT        = 150;
+const TREE_TRUNK_COLOR  = 0x6b4226;
+const TREE_LEAF_COLOR   = 0x2d6a2d;
+
+const DOOR_INTERACT_DIST = 2.8; // XZ distance to trigger E prompt
+const FOG_COLOR         = 0x87ceeb;
+const FOG_NEAR          = 40;
+const FOG_FAR           = 120;
+
+// ═══════════════════════════════════════════════════════════════
+// SCENE SETUP
+// ═══════════════════════════════════════════════════════════════
+const canvas    = document.getElementById('gameCanvas');
+const overlay   = document.getElementById('overlay');
+const crosshair = document.getElementById('crosshair');
+const hudEl     = document.getElementById('hud');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(FOG_COLOR);
+scene.fog = new THREE.Fog(FOG_COLOR, FOG_NEAR, FOG_FAR);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// INPUT
+// ═══════════════════════════════════════════════════════════════
+const keys = {};
+let ePressedThisFrame = false;
+
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'KeyE') ePressedThisFrame = true;
+  if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ═══════════════════════════════════════════════════════════════
+// TERRAIN HEIGHT
+// ═══════════════════════════════════════════════════════════════
+// Centre (village) blends smoothly to VILLAGE_FLOOR within VILLAGE_RADIUS units.
+function terrainHeight(x, z) {
+  const raw =
+    Math.sin(x * 0.08) * Math.cos(z * 0.06) * 3.5 +
+    Math.sin(x * 0.15 + 1.2) * Math.sin(z * 0.12) * 2.0 +
+    Math.cos(x * 0.05 + z * 0.04) * 1.5 +
+    Math.sin(x * 0.25 + 0.5) * Math.cos(z * 0.20) * 0.8;
+  const d     = Math.sqrt(x * x + z * z);
+  const blend = Math.max(0, 1 - d / VILLAGE_RADIUS);
+  return raw * (1 - blend) + VILLAGE_FLOOR * blend;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CAMERA ORBIT STATE
+// ═══════════════════════════════════════════════════════════════
+const cam = { yaw: 0, pitch: 0.6, distance: CAM_DISTANCE };
+const camTarget = new THREE.Vector3();
+
+function updateCamera(playerPos) {
+  camTarget.set(playerPos.x, playerPos.y + CAM_HEIGHT_OFFSET, playerPos.z);
+  const sp = Math.sin(cam.pitch), cp = Math.cos(cam.pitch);
+  const sy = Math.sin(cam.yaw),   cy = Math.cos(cam.yaw);
+  camera.position.set(
+    camTarget.x + cam.distance * sp * sy,
+    camTarget.y + cam.distance * cp,
+    camTarget.z + cam.distance * sp * cy
+  );
+  camera.lookAt(camTarget);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PLAYER CLASS
+// ═══════════════════════════════════════════════════════════════
+class Player {
+  constructor() {
+    this.pos         = new THREE.Vector3(0, VILLAGE_FLOOR, 0);
+    this.vy          = 0;
+    this.onGround    = true;
+    this.isSwimming  = false;
+    this.walkTime    = 0;
+    this.isMoving    = false;
+    this.isSprinting = false;
+    this.facingYaw   = 0;
+    this._buildMesh();
+  }
+
+  _buildMesh() {
+    const bodyMat = new THREE.MeshLambertMaterial({ color: PLAYER_BODY_COLOR });
+    const headMat = new THREE.MeshLambertMaterial({ color: PLAYER_HEAD_COLOR });
+    this.bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(PLAYER_BODY_W, PLAYER_BODY_H, PLAYER_BODY_D), bodyMat);
+    this.headMesh = new THREE.Mesh(new THREE.BoxGeometry(PLAYER_BODY_W*0.8, PLAYER_BODY_H*0.4, PLAYER_BODY_D*0.8), headMat);
+    this.bodyMesh.castShadow = true;
+    this.headMesh.castShadow = true;
+    this.headMesh.position.y = PLAYER_BODY_H / 2 + PLAYER_BODY_H * 0.2;
+    this.group = new THREE.Group();
+    this.group.add(this.bodyMesh);
+    this.group.add(this.headMesh);
+    scene.add(this.group);
+  }
+
+  update(dt) {
+    const dtS      = dt / 1000;
+    const terrainH = terrainHeight(this.pos.x, this.pos.z);
+    const overLake = terrainH < WATER_LEVEL;
+
+    // ── Determine swim state ───────────────────────────────────
+    if (overLake && this.pos.y <= WATER_LEVEL + 0.15) {
+      this.isSwimming = true;
+    } else if (!overLake) {
+      this.isSwimming = false;
+    }
+
+    // ── Speed ──────────────────────────────────────────────────
+    const speed = this.isSwimming ? SWIM_SPEED
+                : (keys['ShiftLeft'] || keys['ShiftRight']) ? SPRINT_SPEED
+                : WALK_SPEED;
+    this.isSprinting = !this.isSwimming && speed === SPRINT_SPEED;
+
+    // ── Horizontal movement ────────────────────────────────────
+    let dx = 0, dz = 0;
+    if (keys['KeyW'] || keys['ArrowUp'])    dz -= 1;
+    if (keys['KeyS'] || keys['ArrowDown'])  dz += 1;
+    if (keys['KeyA'] || keys['ArrowLeft'])  dx -= 1;
+    if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+    this.isMoving = (dx !== 0 || dz !== 0);
+
+    if (this.isMoving) {
+      const len = Math.sqrt(dx*dx + dz*dz);
+      dx /= len; dz /= len;
+      const cosY = Math.cos(cam.yaw), sinY = Math.sin(cam.yaw);
+      const worldDx = dx*cosY + dz*sinY;
+      const worldDz = dx*-sinY + dz*cosY;
+      this.pos.x += worldDx * speed * dtS;
+      this.pos.z += worldDz * speed * dtS;
+      this.facingYaw = Math.atan2(worldDx, worldDz);
+    }
+
+    // ── Jump (only on solid ground) ────────────────────────────
+    if (keys['Space'] && this.onGround && !this.isSwimming) {
+      this.vy = JUMP_FORCE;
+      this.onGround = false;
+    }
+
+    // ── Vertical physics ───────────────────────────────────────
+    const recalcH      = terrainHeight(this.pos.x, this.pos.z);
+    const recalcLake   = recalcH < WATER_LEVEL;
+
+    if (this.isSwimming) {
+      // Buoyancy spring toward surface + damping
+      this.vy += (WATER_LEVEL - this.pos.y) * BUOYANCY_K * dtS;
+      this.vy *= WATER_DAMPING;
+      this.vy  = Math.max(-3, Math.min(3, this.vy));
+      this.pos.y += this.vy * dtS;
+      this.pos.y  = Math.min(this.pos.y, WATER_LEVEL);
+      this.onGround = this.pos.y >= WATER_LEVEL - 0.05;
+      // Shore exit
+      if (!recalcLake && this.pos.y <= recalcH) {
+        this.isSwimming = false;
+        this.pos.y      = recalcH;
+        this.vy         = 0;
+        this.onGround   = true;
+      }
+    } else if (!this.onGround) {
+      this.vy      += GRAVITY * dtS;
+      this.pos.y   += this.vy * dtS;
+      if (this.pos.y <= recalcH) {
+        this.pos.y  = recalcH;
+        this.vy     = 0;
+        this.onGround = true;
+      }
+      // Enter water mid-air
+      if (recalcLake && this.pos.y <= WATER_LEVEL) {
+        this.isSwimming = true;
+        this.vy        *= 0.3;
+        this.pos.y      = Math.min(this.pos.y, WATER_LEVEL);
+      }
+    } else {
+      this.pos.y = recalcH;
+    }
+
+    // ── Walking bob ────────────────────────────────────────────
+    if (this.isMoving && this.onGround && !this.isSwimming) {
+      this.walkTime += dtS * BOB_FREQ * (this.isSprinting ? SPRINT_BOB_MULT : 1);
+    } else {
+      this.walkTime += dtS * 4;
+    }
+    const bobOffset = (this.isMoving && this.onGround && !this.isSwimming)
+      ? Math.sin(this.walkTime * Math.PI * 2) * BOB_AMPLITUDE : 0;
+
+    // ── Sync mesh ──────────────────────────────────────────────
+    this.group.position.set(this.pos.x, this.pos.y + PLAYER_BODY_H/2 + bobOffset, this.pos.z);
+    this.group.rotation.y = this.facingYaw;
+    const lean = this.isSprinting && this.isMoving ? -0.18 : 0;
+    this.bodyMesh.rotation.x = lean;
+    this.headMesh.rotation.x = lean;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DOOR SYSTEM
+// ═══════════════════════════════════════════════════════════════
+// Each entry: { pivot: THREE.Group, open: bool, worldPos: THREE.Vector3 }
+const doors = [];
+
+function tryInteractDoor(playerPos) {
+  for (const d of doors) {
+    const dx = playerPos.x - d.worldPos.x;
+    const dz = playerPos.z - d.worldPos.z;
+    if (dx*dx + dz*dz < DOOR_INTERACT_DIST * DOOR_INTERACT_DIST) {
+      d.open = !d.open;
+      d.pivot.rotation.y = d.open ? Math.PI / 2 : 0;
+      return;
+    }
+  }
+}
+
+function nearestDoor(playerPos) {
+  for (const d of doors) {
+    const dx = playerPos.x - d.worldPos.x;
+    const dz = playerPos.z - d.worldPos.z;
+    if (dx*dx + dz*dz < DOOR_INTERACT_DIST * DOOR_INTERACT_DIST) return d;
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HOUSE BUILDER HELPERS
+// ═══════════════════════════════════════════════════════════════
+function addBox(parent, px, py, pz, w, h, d, color, noShadow) {
+  const m = new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, d),
+    new THREE.MeshLambertMaterial({ color })
+  );
+  m.position.set(px, py, pz);
+  m.castShadow  = !noShadow;
+  m.receiveShadow = true;
+  parent.add(m);
+  return m;
+}
+
+// buildHouse: creates walls, roof, windows, door, then calls furnish(group,W,D,H).
+// hx/hz = world XZ, ry = Y rotation, cfg = config object.
+// Returns door object pushed into global doors[].
+function buildHouse(hx, hz, ry, cfg) {
+  const { W, D, H, wallColor, roofColor, roofType, doorColor, furnish } = cfg;
+  const wt = 0.15, dW = 0.9, dH = 1.9;
+  const g = new THREE.Group();
+
+  // ── Walls ──────────────────────────────────────────────────
+  // Back
+  addBox(g, 0, H/2, D/2, W + wt*2, H, wt, wallColor);
+  // Left / Right
+  addBox(g, -W/2, H/2, 0, wt, H, D, wallColor);
+  addBox(g,  W/2, H/2, 0, wt, H, D, wallColor);
+  // Front — two side strips + piece above door
+  const sw = (W - dW) / 2;
+  addBox(g, -(dW/2 + sw/2), H/2, -D/2, sw, H, wt, wallColor);
+  addBox(g,  (dW/2 + sw/2), H/2, -D/2, sw, H, wt, wallColor);
+  if (H - dH > 0.05) addBox(g, 0, dH + (H-dH)/2, -D/2, dW, H-dH, wt, wallColor);
+
+  // ── Windows (exterior panes on left & right walls) ─────────
+  const winColor = 0xadd8e6;
+  const winY = H * 0.58, winH = 0.65, winZ = 0.1;
+  // Left wall outer face
+  addBox(g, -W/2 - wt - 0.01, winY,  winZ, 0.04, winH, 0.85, winColor, true);
+  addBox(g, -W/2 - wt - 0.01, winY, -winZ, 0.04, winH, 0.85, winColor, true);
+  // Right wall outer face
+  addBox(g,  W/2 + wt + 0.01, winY,  winZ, 0.04, winH, 0.85, winColor, true);
+  addBox(g,  W/2 + wt + 0.01, winY, -winZ, 0.04, winH, 0.85, winColor, true);
+  // Window frames (dark surround, slightly larger)
+  const fColor = 0x4a3010;
+  addBox(g, -W/2 - wt - 0.02, winY,  winZ, 0.03, winH+0.1, 0.95, fColor, true);
+  addBox(g, -W/2 - wt - 0.02, winY, -winZ, 0.03, winH+0.1, 0.95, fColor, true);
+  addBox(g,  W/2 + wt + 0.02, winY,  winZ, 0.03, winH+0.1, 0.95, fColor, true);
+  addBox(g,  W/2 + wt + 0.02, winY, -winZ, 0.03, winH+0.1, 0.95, fColor, true);
+
+  // ── Roof ───────────────────────────────────────────────────
+  if (roofType === 'pyramid') {
+    const rg = new THREE.CylinderGeometry(0, (W/2 + 0.4) * Math.SQRT2, 1.8, 4);
+    const rm = new THREE.Mesh(rg, new THREE.MeshLambertMaterial({ color: roofColor }));
+    rm.position.y = H + 0.9; rm.rotation.y = Math.PI / 4; rm.castShadow = true; g.add(rm);
+  } else if (roofType === 'steep') {
+    const rg = new THREE.CylinderGeometry(0, (W/2 + 0.3) * Math.SQRT2, 3.2, 4);
+    const rm = new THREE.Mesh(rg, new THREE.MeshLambertMaterial({ color: roofColor }));
+    rm.position.y = H + 1.6; rm.rotation.y = Math.PI / 4; rm.castShadow = true; g.add(rm);
+  } else if (roofType === 'flat') {
+    addBox(g, 0, H + 0.18, 0, W + 0.6, 0.35, D + 0.6, roofColor);
+    // Chimney
+    addBox(g, W/4, H + 0.7, D/4, 0.4, 0.9, 0.4, 0x555555);
+  } else if (roofType === 'cone') {
+    const rg = new THREE.ConeGeometry(W * 0.72, 2.2, 9);
+    const rm = new THREE.Mesh(rg, new THREE.MeshLambertMaterial({ color: roofColor }));
+    rm.position.y = H + 1.1; rm.castShadow = true; g.add(rm);
+  }
+
+  // ── Furniture ──────────────────────────────────────────────
+  if (furnish) furnish(g, W, D, H);
+
+  // ── Door (pivot at left hinge edge) ────────────────────────
+  const doorPivot = new THREE.Group();
+  doorPivot.position.set(-dW/2, 0, -D/2 - wt/2 - 0.02);
+  const dGeo = new THREE.BoxGeometry(dW, dH, 0.07);
+  dGeo.translate(dW/2, dH/2, 0); // pivot at left edge
+  const dMesh = new THREE.Mesh(dGeo, new THREE.MeshLambertMaterial({ color: doorColor }));
+  dMesh.castShadow = true;
+  doorPivot.add(dMesh);
+  g.add(doorPivot);
+
+  // ── Position group in world ────────────────────────────────
+  g.position.set(hx, VILLAGE_FLOOR, hz);
+  g.rotation.y = ry;
+  scene.add(g);
+  g.updateWorldMatrix(true, true);
+
+  const worldPos = new THREE.Vector3();
+  doorPivot.getWorldPosition(worldPos);
+  doors.push({ pivot: doorPivot, open: false, worldPos });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VILLAGE
+// ═══════════════════════════════════════════════════════════════
+function buildVillage() {
+  const VY = VILLAGE_FLOOR;
+  const pathMat = new THREE.MeshLambertMaterial({ color: 0x9a8870 });
+
+  // Cross-shaped dirt path
+  const nsPath = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.12, 32), pathMat);
+  nsPath.position.set(0, VY + 0.06, 0); nsPath.receiveShadow = true; scene.add(nsPath);
+  const ewPath = new THREE.Mesh(new THREE.BoxGeometry(32, 0.12, 2.6), pathMat);
+  ewPath.position.set(0, VY + 0.06, 0); ewPath.receiveShadow = true; scene.add(ewPath);
+
+  // ── House 1 — Small Cottage (west, faces east) ─────────────
+  // Warm tan walls, red pyramid roof, cosy interior
+  buildHouse(-11, 0, Math.PI / 2, {
+    W: 5, D: 4, H: 2.8,
+    wallColor: 0xd4956a, roofColor: 0x8b2020, roofType: 'pyramid',
+    doorColor: 0x5a3010,
+    furnish(g, W, D, H) {
+      // Table top + legs (single support box)
+      addBox(g, 0.3, 0.88, 0.5, 1.3, 0.07, 0.75, 0x8b6914);
+      addBox(g, 0.3, 0.44, 0.5, 1.2, 0.75, 0.65, 0x6a4e10, true);
+      // Chairs — seat + backrest
+      addBox(g,  1.2, 0.46, 0.5, 0.42, 0.06, 0.42, 0x7a5010);
+      addBox(g,  1.2, 0.72, 0.7, 0.42, 0.46, 0.06, 0x7a5010);
+      addBox(g, -0.6, 0.46, 0.5, 0.42, 0.06, 0.42, 0x7a5010);
+      addBox(g, -0.6, 0.72, 0.7, 0.42, 0.46, 0.06, 0x7a5010);
+      // Fireplace in back-left corner
+      addBox(g, -W/2+0.55, H*0.42, D/2-0.22, 1.1, H*0.85, 0.38, 0x444040);
+      addBox(g, -W/2+0.55, 0.22,   D/2-0.22, 0.6, 0.35,   0.25, 0xff4500); // fire
+    }
+  });
+
+  // ── House 2 — Farmhouse (east, faces west) ─────────────────
+  // Cream walls, flat dark roof with chimney, beds + long table
+  buildHouse(11, 0, -Math.PI / 2, {
+    W: 6, D: 5, H: 3.0,
+    wallColor: 0xe8e0c8, roofColor: 0x444444, roofType: 'flat',
+    doorColor: 0x2d5a1a,
+    furnish(g, W, D, H) {
+      // Long dining table
+      addBox(g, 0, 0.88, 0.5, 2.8, 0.07, 0.9, 0x8b6914);
+      addBox(g, 0, 0.44, 0.5, 2.7, 0.80, 0.8, 0x6a4e10, true);
+      // Bench either side
+      addBox(g, 0, 0.46, 1.15, 2.4, 0.06, 0.38, 0x7a5010);
+      addBox(g, 0, 0.46, -0.2, 2.4, 0.06, 0.38, 0x7a5010);
+      // Bed at back-left
+      addBox(g, -2.0, 0.27, 2.1, 0.95, 0.28, 2.1, 0xc8b4a0);
+      addBox(g, -2.0, 0.44, 1.15, 0.95, 0.14, 0.25, 0xffffff); // pillow
+      // Wardrobe at back-right
+      addBox(g, 2.2, H*0.47, D/2-0.35, 0.85, H*0.94, 0.45, 0x6b5030);
+      // Storage barrel (cylinder)
+      const brl = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.24, 0.26, 0.65, 10),
+        new THREE.MeshLambertMaterial({ color: 0x7a5020 })
+      );
+      brl.position.set(2.0, 0.33, 1.3); brl.castShadow = true; g.add(brl);
+    }
+  });
+
+  // ── House 3 — Tall House (north, faces south) ──────────────
+  // Slate blue walls, very steep dark roof, study interior
+  buildHouse(0, -11, Math.PI, {
+    W: 4, D: 4, H: 4.5,
+    wallColor: 0x7a9ab5, roofColor: 0x181828, roofType: 'steep',
+    doorColor: 0x222222,
+    furnish(g, W, D, H) {
+      // Tall bookshelf back-left
+      addBox(g, -W/2+0.32, H*0.46, D/2-0.28, 0.45, H*0.92, 1.3, 0x5a4020);
+      // Book rows (decorative colour strips)
+      addBox(g, -W/2+0.32, H*0.3,  D/2-0.28, 0.46, 0.14, 1.25, 0xc02020, true);
+      addBox(g, -W/2+0.32, H*0.5,  D/2-0.28, 0.46, 0.14, 1.25, 0x2060a0, true);
+      addBox(g, -W/2+0.32, H*0.7,  D/2-0.28, 0.46, 0.14, 1.25, 0x208020, true);
+      // Desk
+      addBox(g, 0.6, 1.02, D/2-0.38, 1.5, 0.07, 0.65, 0x8b6914);
+      addBox(g, 0.6, 0.51, D/2-0.38, 1.4, 0.96, 0.56, 0x6a4e10, true);
+      // Chair
+      addBox(g, 0.6, 0.47, D/2-1.15, 0.44, 0.06, 0.44, 0x7a5010);
+      addBox(g, 0.6, 0.74, D/2-0.90, 0.44, 0.46, 0.06, 0x7a5010);
+      // Floor lamp: pole + shade
+      const pole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.04, 0.04, 1.6, 7),
+        new THREE.MeshLambertMaterial({ color: 0xc8a020 })
+      );
+      pole.position.set(-0.5, 0.8, -0.6); pole.castShadow = true; g.add(pole);
+      const shade = new THREE.Mesh(
+        new THREE.SphereGeometry(0.22, 8, 6),
+        new THREE.MeshLambertMaterial({ color: 0xffee88 })
+      );
+      shade.position.set(-0.5, 1.7, -0.6); g.add(shade);
+    }
+  });
+
+  // ── House 4 — Hut (south, faces north) ────────────────────
+  // Sandy walls, green cone roof, rustic interior
+  buildHouse(0, 11, 0, {
+    W: 5, D: 5, H: 2.2,
+    wallColor: 0xc8b878, roofColor: 0x3a7a1a, roofType: 'cone',
+    doorColor: 0x9a7030,
+    furnish(g, W, D, H) {
+      // Sleeping mat at back
+      addBox(g, -1.3, 0.07, 1.6, 1.6, 0.12, 2.4, 0xc87850);
+      addBox(g, -1.3, 0.21, 0.65, 1.6, 0.12, 0.38, 0xf0e8d0); // pillow/blanket
+      // Central fire pit ring + flame
+      addBox(g, 0.8, 0.14, 0.7, 0.85, 0.14, 0.85, 0x555555);
+      addBox(g, 0.8, 0.28, 0.7, 0.3,  0.22, 0.3,  0xff4500);
+      // Storage crates right-back
+      addBox(g, W/2-0.45, 0.28, D/2-0.45, 0.65, 0.52, 0.65, 0x6b4020);
+      addBox(g, W/2-0.45, 0.62, D/2-1.25, 0.65, 0.52, 0.65, 0x5a3818);
+      // Hanging dried herbs (simple cylinder)
+      const herb = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.06, 0.06, 0.55, 5),
+        new THREE.MeshLambertMaterial({ color: 0x608050 })
+      );
+      herb.position.set(0.3, H - 0.3, D/2 - 0.5); herb.castShadow = true; g.add(herb);
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SCENE BUILD
+// ═══════════════════════════════════════════════════════════════
+function makePRNG(seed) {
+  let s = seed >>> 0;
+  return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 0xffffffff; };
+}
+
+function buildScene() {
+  // ── Terrain heightfield ──────────────────────────────────
+  // PlaneGeometry in local XY (z=0); after rotation.x=-PI/2: local z → world y.
+  // worldX = localX, worldZ = -localY
+  const groundGeo = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE, GROUND_SEGS, GROUND_SEGS);
+  const pos = groundGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    pos.setZ(i, terrainHeight(pos.getX(i), -pos.getY(i)));
+  }
+  pos.needsUpdate = true;
+  groundGeo.computeVertexNormals();
+  const ground = new THREE.Mesh(groundGeo, new THREE.MeshLambertMaterial({ color: GROUND_COLOR }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // ── Water plane ──────────────────────────────────────────
+  const water = new THREE.Mesh(
+    new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE),
+    new THREE.MeshLambertMaterial({ color: WATER_COLOR, transparent: true, opacity: 0.78, side: THREE.DoubleSide })
+  );
+  water.rotation.x = -Math.PI / 2;
+  water.position.y = WATER_LEVEL;
+  scene.add(water);
+
+  // ── Trees (skip village radius + lake areas) ─────────────
+  const rand = makePRNG(42);
+  const trunkMat = new THREE.MeshLambertMaterial({ color: TREE_TRUNK_COLOR });
+  const leafMat  = new THREE.MeshLambertMaterial({ color: TREE_LEAF_COLOR });
+  const tgA = new THREE.CylinderGeometry(0.12, 0.18, 1.6, 6);
+  const tgB = new THREE.CylinderGeometry(0.10, 0.15, 2.2, 6);
+  const lgA = new THREE.ConeGeometry(1.1, 2.2, 7);
+  const lgB = new THREE.ConeGeometry(0.85, 1.8, 7);
+
+  let placed = 0, attempts = 0;
+  while (placed < TREE_COUNT && attempts < TREE_COUNT * 12) {
+    attempts++;
+    const tx = (rand() - 0.5) * (GROUND_SIZE - 10);
+    const tz = (rand() - 0.5) * (GROUND_SIZE - 10);
+    if (tx*tx + tz*tz < VILLAGE_RADIUS * VILLAGE_RADIUS) continue;
+    const h = terrainHeight(tx, tz);
+    if (h < WATER_LEVEL + 0.8) continue;
+    const big = rand() > 0.45;
+    const tH  = big ? 1.6 : 2.2, lH = big ? 2.2 : 1.8;
+    const trunk = new THREE.Mesh(big ? tgA : tgB, trunkMat);
+    trunk.position.set(tx, h + tH/2, tz); trunk.castShadow = true; scene.add(trunk);
+    const leaves = new THREE.Mesh(big ? lgA : lgB, leafMat);
+    leaves.position.set(tx, h + tH + lH/2, tz); leaves.castShadow = true; scene.add(leaves);
+    placed++;
+  }
+
+  // ── Village ───────────────────────────────────────────────
+  buildVillage();
+
+  // ── Lights ────────────────────────────────────────────────
+  scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+  const sun = new THREE.DirectionalLight(0xfff5e0, 0.9);
+  sun.position.set(30, 60, 20);
+  sun.castShadow = true;
+  sun.shadow.mapSize.width  = 1024;
+  sun.shadow.mapSize.height = 1024;
+  sun.shadow.camera.near   = 0.5;
+  sun.shadow.camera.far    = 150;
+  sun.shadow.camera.left = sun.shadow.camera.bottom = -70;
+  sun.shadow.camera.right = sun.shadow.camera.top   =  70;
+  scene.add(sun);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════════════
+const game = { state: 'locked', lastTime: 0 };
+
+// ═══════════════════════════════════════════════════════════════
+// POINTER LOCK
+// ═══════════════════════════════════════════════════════════════
+overlay.addEventListener('click', () => canvas.requestPointerLock());
+
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement === canvas) {
+    game.state = 'playing';
+    overlay.classList.add('hidden');
+    crosshair.style.display = 'block';
+  } else {
+    game.state = 'locked';
+    overlay.classList.remove('hidden');
+    crosshair.style.display = 'none';
+    for (const k in keys) keys[k] = false;
+  }
+});
+
+document.addEventListener('mousemove', e => {
+  if (game.state !== 'playing') return;
+  cam.yaw   -= e.movementX * MOUSE_SENSITIVITY;
+  cam.pitch -= e.movementY * MOUSE_SENSITIVITY;
+  cam.pitch  = Math.max(CAM_PITCH_MIN, Math.min(CAM_PITCH_MAX, cam.pitch));
+});
+
+// ═══════════════════════════════════════════════════════════════
+// HUD
+// ═══════════════════════════════════════════════════════════════
+function updateHUD(player) {
+  const state = player.isSwimming  ? 'SWIMMING'
+              : player.isSprinting ? 'SPRINTING'
+              : player.isMoving    ? 'WALKING'
+              : 'IDLE';
+  const air  = (!player.onGround && !player.isSwimming) ? '  |  AIRBORNE' : '';
+  const door = nearestDoor(player.pos);
+  const doorHint = door
+    ? `<br><span style="color:#ffe080">E — ${door.open ? 'Close door' : 'Open door'}</span>`
+    : '';
+  hudEl.innerHTML =
+    `${state}${air}${doorHint}<br>` +
+    `<span style="color:#999;font-size:11px">WASD move &nbsp; SHIFT sprint &nbsp; SPACE jump &nbsp; E door &nbsp; ESC pause</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GAME LOOP
+// ═══════════════════════════════════════════════════════════════
+function gameLoop(timestamp) {
+  const dt = Math.min(timestamp - game.lastTime, 50);
+  game.lastTime = timestamp;
+
+  if (game.state === 'playing') {
+    if (ePressedThisFrame) tryInteractDoor(player.pos);
+    player.update(dt);
+    updateCamera(player.pos);
+    updateHUD(player);
+  }
+  ePressedThisFrame = false;
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(gameLoop);
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────
+buildScene();
+const player = new Player();
+updateCamera(player.pos);
+
+requestAnimationFrame(ts => { game.lastTime = ts; requestAnimationFrame(gameLoop); });
+</script>
+</body>
+</html>
