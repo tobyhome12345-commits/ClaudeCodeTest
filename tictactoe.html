@@ -300,19 +300,10 @@
     {
       id: 'oracle', name: 'ORACLE', avatar: '🔮',
       difficulty: 'Unbeatable', diffClass: 'diff-perfect',
-      desc: 'Sees every fork before it forms. Scans all active win-lines 8 moves deep and punishes double threats instantly. You will not win.',
+      desc: 'Every cell, every move, 6 steps ahead. Considers the full board at each turn so no human threat is ever invisible to it. You will not win.',
       getMove(board) {
-        if (gridSize === 3) {
-          // 3×3: full minimax is already perfect
-          return minimaxDeep(board.slice(), 'O', -Infinity, Infinity, 9).index;
-        }
-        // 5×5: threat-space search — only considers cells adjacent to existing
-        // pieces and immediate threats, enabling depth-8 look-ahead.
-        const win = findWinningMove(board, 'O');
-        if (win !== -1) return win;
-        const block = findWinningMove(board, 'X');
-        if (block !== -1) return block;
-        return minimaxApex(board.slice(), 'O', -Infinity, Infinity, 8).index;
+        const depth = gridSize === 3 ? 9 : 6;
+        return minimaxDeep(board.slice(), 'O', -Infinity, Infinity, depth).index;
       }
     }
   ];
@@ -547,8 +538,11 @@
     return score;
   }
 
-  // Depth-limited minimax with alpha-beta pruning.
-  // depth=9 on 3×3 is effectively unlimited; depth=5 is fast enough on 5×5.
+  // Minimax with alpha-beta pruning + move ordering.
+  // Considers ALL empty cells so the AI never has a blind spot — if a human
+  // plays anywhere on the board, the tree has already explored that branch.
+  // Move ordering (wins → blocks → rest) dramatically improves alpha-beta
+  // efficiency, making depth 6 on 5×5 fast in practice.
   function minimaxDeep(b, player, alpha, beta, depth) {
     const oWin = WINS.find(line => line.every(i => b[i] === 'O'));
     const xWin = WINS.find(line => line.every(i => b[i] === 'X'));
@@ -558,58 +552,10 @@
     if (empty.length === 0) return { score: 0 };
     if (depth === 0)        return { score: evalBoard(b) };
 
-    let best = player === 'O'
-      ? { score: -Infinity, index: -1 }
-      : { score:  Infinity, index: -1 };
-
-    for (const i of empty) {
-      b[i] = player;
-      const result = minimaxDeep(b, player === 'O' ? 'X' : 'O', alpha, beta, depth - 1);
-      b[i] = null;
-      result.index = i;
-      if (player === 'O') {
-        if (result.score > best.score) best = result;
-        alpha = Math.max(alpha, best.score);
-      } else {
-        if (result.score < best.score) best = result;
-        beta  = Math.min(beta,  best.score);
-      }
-      if (beta <= alpha) break;
-    }
-    return best;
-  }
-
-  // ─── Threat-space search (ORACLE on 5×5) ────────────────────────────────────
-  // Only considers cells adjacent to occupied squares + immediate threats.
-  // Dramatically reduces the branching factor, enabling depth-8 alpha-beta.
-
-  function getRelevantMoves(b) {
-    const empty = getEmpty(b);
-    // First move: play center
-    if (b.every(v => v === null)) {
-      const mid = Math.floor(gridSize / 2);
-      return [mid * gridSize + mid];
-    }
-    const relevant = new Set();
-    // Add every empty cell that shares a win-line with any existing piece.
-    // This catches fork setups (e.g. a cell 2 squares away that completes two
-    // different 3-in-a-rows) which pure adjacency search misses entirely.
-    for (const line of WINS) {
-      if (line.some(i => b[i] !== null)) {
-        for (const i of line) {
-          if (b[i] === null) relevant.add(i);
-        }
-      }
-    }
-    return relevant.size > 0 ? [...relevant] : empty;
-  }
-
-  // Move ordering: wins first, then blocks, then rest — maximises alpha-beta cutoffs
-  function orderedMoves(b, player) {
-    const moves = getRelevantMoves(b);
+    // Order moves: wins first, then opponent blocks, then rest
     const opp = player === 'O' ? 'X' : 'O';
     const wins = [], blocks = [], rest = [];
-    for (const i of moves) {
+    for (const i of empty) {
       b[i] = player;
       if (WINS.some(line => line.every(j => b[j] === player))) { b[i] = null; wins.push(i); continue; }
       b[i] = opp;
@@ -617,26 +563,15 @@
       b[i] = null;
       rest.push(i);
     }
-    return [...wins, ...blocks, ...rest];
-  }
+    const moves = [...wins, ...blocks, ...rest];
 
-  function minimaxApex(b, player, alpha, beta, depth) {
-    const oWin = WINS.find(line => line.every(i => b[i] === 'O'));
-    const xWin = WINS.find(line => line.every(i => b[i] === 'X'));
-    if (oWin) return { score: 1000 };
-    if (xWin) return { score: -1000 };
-    const empty = getEmpty(b);
-    if (empty.length === 0) return { score: 0 };
-    if (depth === 0)        return { score: evalBoard(b) };
-
-    const moves = orderedMoves(b, player);
     let best = player === 'O'
       ? { score: -Infinity, index: -1 }
       : { score:  Infinity, index: -1 };
 
     for (const i of moves) {
       b[i] = player;
-      const result = minimaxApex(b, player === 'O' ? 'X' : 'O', alpha, beta, depth - 1);
+      const result = minimaxDeep(b, opp, alpha, beta, depth - 1);
       b[i] = null;
       result.index = i;
       if (player === 'O') {
