@@ -13,6 +13,8 @@
       font-family: 'Segoe UI', system-ui, sans-serif;
     }
     canvas { display: block; }
+
+    /* ── Hub button ─────────────────────────────────────────────── */
     #hub-btn {
       position: fixed; top: 14px; left: 14px;
       background: rgba(13,13,26,0.85); color: #a8dadc;
@@ -23,34 +25,33 @@
       transition: border-color 0.2s, color 0.2s;
     }
     #hub-btn:hover { border-color: #a8dadc; color: #fff; }
+
+    /* ── Interaction prompt ─────────────────────────────────────── */
     #interact-prompt {
       position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
       background: rgba(0,0,0,0.75); color: #fff;
       border: 1px solid rgba(255,255,255,0.2); border-radius: 24px;
       padding: 7px 20px; font-size: 0.82rem; letter-spacing: 1.2px;
       text-transform: uppercase; pointer-events: none;
-      opacity: 0; transition: opacity 0.15s; z-index: 10;
-      white-space: nowrap;
+      opacity: 0; transition: opacity 0.15s; z-index: 10; white-space: nowrap;
     }
     #interact-prompt.show { opacity: 1; }
+
+    /* ── Dialog box ─────────────────────────────────────────────── */
     #dialog-box {
       position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-      width: min(520px, 90vw);
-      background: rgba(10,15,30,0.96); color: #e8eaf6;
-      border: 2px solid #3a6a9a; border-radius: 14px;
+      width: min(540px, 92vw);
+      background: rgba(8,12,26,0.97); color: #e8eaf6;
+      border: 2px solid #2a5a8a; border-radius: 14px;
       padding: 18px 24px 14px; font-size: 0.93rem; line-height: 1.6;
       display: none; z-index: 20; pointer-events: none;
     }
     #dialog-box.show { display: block; }
-    #dialog-name {
-      font-weight: 700; font-size: 0.78rem; letter-spacing: 2px;
-      text-transform: uppercase; color: #a8dadc; margin-bottom: 6px;
-    }
+    #dialog-name { font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; color: #a8dadc; margin-bottom: 6px; }
     #dialog-text { color: #dde; }
-    #dialog-continue {
-      margin-top: 10px; font-size: 0.72rem; color: #556; letter-spacing: 1px;
-      text-transform: uppercase; text-align: right;
-    }
+    #dialog-hint { margin-top: 10px; font-size: 0.7rem; color: #445; letter-spacing: 1px; text-transform: uppercase; text-align: right; }
+
+    /* ── Sprint bar ─────────────────────────────────────────────── */
     #sprint-bar {
       position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
       display: flex; align-items: center; gap: 8px; z-index: 10;
@@ -58,28 +59,108 @@
     }
     #sprint-bar.show { opacity: 1; }
     #sprint-label { font-size: 0.65rem; color: #aaa; letter-spacing: 1.5px; text-transform: uppercase; }
-    #sprint-track {
-      width: 100px; height: 6px; background: rgba(255,255,255,0.1);
-      border-radius: 3px; overflow: hidden;
+    #sprint-track { width: 100px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+    #sprint-fill  { height: 100%; width: 100%; background: #5ad; border-radius: 3px; transition: background 0.2s; }
+
+    /* ── I-menu overlay ─────────────────────────────────────────── */
+    #menu-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      display: none; align-items: center; justify-content: center;
+      z-index: 50;
     }
-    #sprint-fill {
-      height: 100%; width: 100%; background: #5ad; border-radius: 3px;
-      transition: background 0.2s;
+    #menu-overlay.show { display: flex; }
+    #menu-panel {
+      background: rgba(8,12,26,0.98);
+      border: 1px solid #1a3a6a; border-radius: 16px;
+      width: min(480px, 92vw); max-height: 70vh;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.7);
     }
+    #menu-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 8px 0 0; border-bottom: 1px solid #1a3a6a;
+    }
+    .menu-tabs { display: flex; }
+    .menu-tab {
+      background: none; border: none; border-bottom: 2px solid transparent;
+      color: #556; padding: 14px 22px; font-size: 0.78rem;
+      font-family: inherit; letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; transition: color 0.15s;
+    }
+    .menu-tab:hover { color: #88a; }
+    .menu-tab.active { color: #a8dadc; border-bottom-color: #a8dadc; }
+    #menu-close-hint { font-size: 0.65rem; color: #334; letter-spacing: 1.5px; text-transform: uppercase; padding-right: 4px; }
+    #menu-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+
+    /* Quest entries */
+    .quest-entry { margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid #111a2e; }
+    .quest-entry:last-child { border-bottom: none; margin-bottom: 0; }
+    .quest-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .quest-title { font-weight: 700; font-size: 0.95rem; color: #e8eaf6; }
+    .quest-badge {
+      font-size: 0.6rem; letter-spacing: 1.5px; text-transform: uppercase;
+      padding: 3px 10px; border-radius: 12px; font-weight: 700;
+    }
+    .badge-inactive  { background: rgba(100,100,120,.2); color: #556; border: 1px solid #223; }
+    .badge-active    { background: rgba(90,180,80,.15);  color: #7dc; border: 1px solid rgba(90,180,80,.3); }
+    .badge-completed { background: rgba(80,160,220,.15); color: #8cf; border: 1px solid rgba(80,160,220,.3); }
+    .quest-desc  { font-size: 0.83rem; color: #778; line-height: 1.5; margin-bottom: 6px; }
+    .quest-progress { font-size: 0.78rem; color: #aaa; }
+    .progress-bar-track { height: 4px; background: #111a2e; border-radius: 2px; margin-top: 6px; overflow: hidden; }
+    .progress-bar-fill  { height: 100%; background: #4a9; border-radius: 2px; transition: width 0.4s; }
+
+    /* Inventory entries */
+    .inv-empty { color: #334; font-size: 0.85rem; text-align: center; padding: 30px 0; letter-spacing: 1px; text-transform: uppercase; }
+    .inv-item { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid #111a2e; }
+    .inv-item:last-child { border-bottom: none; }
+    .inv-icon { font-size: 1.5rem; }
+    .inv-name { font-size: 0.9rem; color: #ccd; flex: 1; }
+    .inv-count { font-size: 1rem; font-weight: 700; color: #a8dadc; }
+
+    /* Quest notification toast */
+    #quest-toast {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+      background: rgba(8,12,26,0.95); color: #7dc;
+      border: 1px solid rgba(90,180,80,.4); border-radius: 10px;
+      padding: 10px 22px; font-size: 0.8rem; letter-spacing: 1.5px;
+      text-transform: uppercase; pointer-events: none;
+      opacity: 0; transition: opacity 0.4s; z-index: 60;
+    }
+    #quest-toast.show { opacity: 1; }
   </style>
 </head>
 <body>
 <a id="hub-btn" href="index.html">&#8592; Hub</a>
 <div id="interact-prompt"></div>
+
 <div id="dialog-box">
   <div id="dialog-name"></div>
   <div id="dialog-text"></div>
-  <div id="dialog-continue">F — continue</div>
+  <div id="dialog-hint">[F] Continue</div>
 </div>
+
 <div id="sprint-bar">
   <span id="sprint-label">Stamina</span>
   <div id="sprint-track"><div id="sprint-fill"></div></div>
 </div>
+
+<!-- I-key menu -->
+<div id="menu-overlay">
+  <div id="menu-panel">
+    <div id="menu-header">
+      <div class="menu-tabs">
+        <button class="menu-tab active" data-tab="quests">Quests</button>
+        <button class="menu-tab"        data-tab="inventory">Inventory</button>
+      </div>
+      <span id="menu-close-hint">[I] Close</span>
+    </div>
+    <div id="menu-body"></div>
+  </div>
+</div>
+
+<div id="quest-toast"></div>
+
 <canvas id="canvas"></canvas>
 
 <script>
@@ -90,13 +171,14 @@ const MAP_ROWS      = 80;
 const PLAYER_R      = 9;
 const PLAYER_SPEED  = 170;
 const SPRINT_SPEED  = 310;
-const STAMINA_MAX   = 1;       // seconds of full sprint
-const STAMINA_DRAIN = 1 / 2.2; // depletes in 2.2s
-const STAMINA_REGEN = 1 / 4;   // refills in 4s
+const STAMINA_MAX   = 1;
+const STAMINA_DRAIN = 1 / 2.2;
+const STAMINA_REGEN = 1 / 4;
 const WALL_T        = 9;
 const DOOR_W        = TILE;
 const INTERACT_DIST = 54;
 const TALK_DIST     = 48;
+const COLLECT_DIST  = 18;
 
 // ─── Seeded RNG ──────────────────────────────────────────────────────────────
 function mulberry32(seed) {
@@ -135,14 +217,10 @@ const map = Array.from({ length: MAP_ROWS }, () =>
   }
 })();
 
-// Forest zone: top-right quadrant (cols 50-79, rows 0-35)
 const FOREST_C0 = 50, FOREST_R0 = 0, FOREST_C1 = 79, FOREST_R1 = 35;
-(function () {
-  // Darken forest tiles
-  for (let r = FOREST_R0; r <= FOREST_R1; r++)
-    for (let c = FOREST_C0; c <= FOREST_C1; c++)
-      map[r][c] = 2; // dark grass
-})();
+for (let r = FOREST_R0; r <= FOREST_R1; r++)
+  for (let c = FOREST_C0; c <= FOREST_C1; c++)
+    map[r][c] = 2;
 
 const mapCanvas = document.createElement('canvas');
 mapCanvas.width  = MAP_COLS * TILE;
@@ -157,559 +235,725 @@ const mctx = mapCanvas.getContext('2d');
       mctx.lineWidth = 0.5;
       mctx.strokeRect(c*TILE, r*TILE, TILE, TILE);
     }
-  // Forest floor: darker overlay
   mctx.fillStyle = 'rgba(0,30,0,0.28)';
   mctx.fillRect(FOREST_C0*TILE, FOREST_R0*TILE,
     (FOREST_C1-FOREST_C0+1)*TILE, (FOREST_R1-FOREST_R0+1)*TILE);
-
   const rng = mulberry32(77);
   for (let i = 0; i < 1200; i++) {
     const x = rng() * MAP_COLS * TILE;
     const y = rng() * MAP_ROWS * TILE;
-    const h = 4 + rng() * 7;
-    const lean = (rng() - 0.5) * 5;
-    mctx.strokeStyle = rng() > 0.5 ? '#2e5227' : '#6aab5a';
+    const h = 4 + rng() * 7, lean = (rng()-0.5)*5;
+    mctx.strokeStyle = rng()>0.5 ? '#2e5227' : '#6aab5a';
     mctx.lineWidth = 1;
-    mctx.beginPath(); mctx.moveTo(x, y); mctx.lineTo(x+lean, y-h); mctx.stroke();
+    mctx.beginPath(); mctx.moveTo(x,y); mctx.lineTo(x+lean,y-h); mctx.stroke();
   }
 })();
 
 // ─── Trees ───────────────────────────────────────────────────────────────────
-// Placed on a loose grid in the forest zone only, with a minimum gap so they
-// look intentional rather than scattered noise.
 const trees = [];
 const trng = mulberry32(123);
-// Forest trees on a rough grid with small offsets
-for (let gr = FOREST_R0 + 1; gr < FOREST_R1; gr += 4) {
-  for (let gc = FOREST_C0 + 1; gc < FOREST_C1; gc += 4) {
-    const jx = (trng() - 0.5) * TILE * 1.2;
-    const jy = (trng() - 0.5) * TILE * 1.2;
-    const wx = gc * TILE + TILE/2 + jx;
-    const wy = gr * TILE + TILE/2 + jy;
-    const r = 10 + trng() * 5;
-    trees.push({ x: wx, y: wy, r, canopyR: r * 2.1 + trng() * 6 });
+for (let gr = FOREST_R0+1; gr < FOREST_R1; gr += 4) {
+  for (let gc = FOREST_C0+1; gc < FOREST_C1; gc += 4) {
+    const jx = (trng()-0.5)*TILE*1.2, jy = (trng()-0.5)*TILE*1.2;
+    const r = 10+trng()*5;
+    trees.push({ x: gc*TILE+TILE/2+jx, y: gr*TILE+TILE/2+jy, r, canopyR: r*2.1+trng()*6 });
   }
 }
 
 function drawTree(ctx2, tree) {
   const { x, y, r, canopyR } = tree;
-  // Shadow
-  ctx2.save(); ctx2.globalAlpha = 0.18;
-  ctx2.fillStyle = '#000';
-  ctx2.beginPath();
-  ctx2.ellipse(x+4, y+r*0.9, canopyR*0.7, canopyR*0.28, 0, 0, Math.PI*2);
-  ctx2.fill(); ctx2.restore();
-  // Trunk
-  ctx2.fillStyle = '#5c3a1e';
-  ctx2.fillRect(x - 4, y - r*0.3, 8, r*0.9);
-  // Canopy layers
-  for (let layer = 2; layer >= 0; layer--) {
-    const ly = y - r*0.4 - layer * canopyR * 0.22;
-    const lr = canopyR * (1 - layer * 0.18);
-    const g = ctx2.createRadialGradient(x - lr*0.2, ly - lr*0.2, 1, x, ly, lr);
-    g.addColorStop(0, layer === 0 ? '#6ab84a' : '#4e9636');
-    g.addColorStop(1, '#2c6018');
-    ctx2.beginPath(); ctx2.arc(x, ly, lr, 0, Math.PI*2);
-    ctx2.fillStyle = g; ctx2.fill();
-    ctx2.strokeStyle = 'rgba(0,0,0,0.15)'; ctx2.lineWidth = 1;
-    ctx2.stroke();
+  ctx2.save(); ctx2.globalAlpha=0.18; ctx2.fillStyle='#000';
+  ctx2.beginPath(); ctx2.ellipse(x+4, y+r*0.9, canopyR*0.7, canopyR*0.28, 0, 0, Math.PI*2); ctx2.fill(); ctx2.restore();
+  ctx2.fillStyle='#5c3a1e'; ctx2.fillRect(x-4, y-r*0.3, 8, r*0.9);
+  for (let layer=2; layer>=0; layer--) {
+    const ly=y-r*0.4-layer*canopyR*0.22, lr=canopyR*(1-layer*0.18);
+    const g=ctx2.createRadialGradient(x-lr*0.2, ly-lr*0.2, 1, x, ly, lr);
+    g.addColorStop(0, layer===0?'#6ab84a':'#4e9636'); g.addColorStop(1,'#2c6018');
+    ctx2.beginPath(); ctx2.arc(x,ly,lr,0,Math.PI*2); ctx2.fillStyle=g; ctx2.fill();
+    ctx2.strokeStyle='rgba(0,0,0,0.15)'; ctx2.lineWidth=1; ctx2.stroke();
   }
 }
 
 // ─── Houses ──────────────────────────────────────────────────────────────────
 const HOUSE_DEFS = [
-  { tx:  5, ty:  5, wallColor: '#c9935a', roofColor: '#7a3b1e' },
-  { tx: 48, ty:  6, wallColor: '#b8a070', roofColor: '#5c3b18' },
-  { tx:  6, ty: 50, wallColor: '#c4a882', roofColor: '#6b3d1a' },
-  { tx: 50, ty: 50, wallColor: '#b09060', roofColor: '#4e2e10' },
-  { tx: 36, ty: 10, wallColor: '#d4a96a', roofColor: '#8a4820' },
-  { tx: 10, ty: 36, wallColor: '#bf9355', roofColor: '#6e3a16' },
+  { tx:  5, ty:  5, wallColor:'#c9935a', roofColor:'#7a3b1e' },
+  { tx: 48, ty:  6, wallColor:'#b8a070', roofColor:'#5c3b18' },
+  { tx:  6, ty: 50, wallColor:'#c4a882', roofColor:'#6b3d1a' },
+  { tx: 50, ty: 50, wallColor:'#b09060', roofColor:'#4e2e10' },
+  { tx: 36, ty: 10, wallColor:'#d4a96a', roofColor:'#8a4820' },
+  { tx: 10, ty: 36, wallColor:'#bf9355', roofColor:'#6e3a16' },
 ];
 const houses = HOUSE_DEFS.map(d => ({
-  x: d.tx*TILE, y: d.ty*TILE, w: 4*TILE, h: 3*TILE,
-  wallColor: d.wallColor, roofColor: d.roofColor, doorOpen: false,
+  x:d.tx*TILE, y:d.ty*TILE, w:4*TILE, h:3*TILE,
+  wallColor:d.wallColor, roofColor:d.roofColor, doorOpen:false,
 }));
 
 function getHouseWalls(house) {
-  const { x, y, w, h, doorOpen } = house;
-  const ds = w/2 - DOOR_W/2;
+  const { x,y,w,h,doorOpen } = house;
+  const ds = w/2-DOOR_W/2;
   const rects = [
-    { x, y, w, h: WALL_T },
-    { x, y, w: WALL_T, h },
-    { x: x+w-WALL_T, y, w: WALL_T, h },
-    { x, y: y+h-WALL_T, w: ds, h: WALL_T },
-    { x: x+ds+DOOR_W, y: y+h-WALL_T, w: w-ds-DOOR_W, h: WALL_T },
+    {x,y,w,h:WALL_T}, {x,y,w:WALL_T,h}, {x:x+w-WALL_T,y,w:WALL_T,h},
+    {x,y:y+h-WALL_T,w:ds,h:WALL_T},
+    {x:x+ds+DOOR_W,y:y+h-WALL_T,w:w-ds-DOOR_W,h:WALL_T},
   ];
-  if (!doorOpen) rects.push({ x: x+ds, y: y+h-WALL_T, w: DOOR_W, h: WALL_T });
+  if (!doorOpen) rects.push({x:x+ds,y:y+h-WALL_T,w:DOOR_W,h:WALL_T});
   return rects;
 }
-function doorCenter(house) { return { x: house.x+house.w/2, y: house.y+house.h }; }
+function doorCenter(house) { return {x:house.x+house.w/2, y:house.y+house.h}; }
 
-// ─── Villagers ───────────────────────────────────────────────────────────────
-// Villagers are placed just in front of their house door and stand still facing up.
-// tx/ty are the house tile coords; villager stands a few pixels south of the door.
-const VILLAGER_DEFS = [
-  { tx:  5, ty:  5, name: 'Old Maren',  skinColor: '#d4956a',
-    lines: ['These lands have been peaceful for many years.',
-            'The forest to the north grows darker each season though.',
-            'Best not to venture too deep without a torch.'] },
-  { tx: 48, ty:  6, name: 'Finn',       skinColor: '#e8b88a',
-    lines: ['Have you seen my sheep? Three of them wandered off again.',
-            'The fence by the east farm needs mending, I suspect.',
-            'If you find them, do let me know!'] },
-  { tx:  6, ty: 50, name: 'Brix',       skinColor: '#c07850',
-    lines: ['I built most of these houses myself, you know.',
-            'Good solid wood from the forest. Though I do not go there alone.',
-            'Strange sounds at night...'] },
-  { tx: 50, ty: 50, name: 'Lena',       skinColor: '#f0c8a0',
-    lines: ['The berries are ripe near the forest edge.',
-            'Just mind the roots — they trip you up something awful.',
-            'Welcome to our little village, by the way!'] },
-  { tx: 36, ty: 10, name: 'Corin',      skinColor: '#a06040',
-    lines: ['I heard something big moving in the trees last night.',
-            'Probably just a deer. Probably.',
-            'Anyway, nice weather we are having.'] },
-  { tx: 10, ty: 36, name: 'Aldric',     skinColor: '#c8905a',
-    lines: ['Quiet day today. Good for thinking.',
-            'I keep my boots by the door. Always ready to walk.',
-            'Not that anywhere exciting is nearby... yet.'] },
+// ─── Quests ──────────────────────────────────────────────────────────────────
+const quests = {
+  lostSheep: {
+    id: 'lostSheep',
+    title: 'Lost Sheep',
+    giver: 'Finn',
+    description: "Finn's 10 sheep have wandered off across the fields. Find them all and bring them back.",
+    itemId: 'sheep',
+    required: 10,
+    status: 'inactive',   // 'inactive' | 'active' | 'completed'
+  },
+  forestHerbs: {
+    id: 'forestHerbs',
+    title: 'Forest Herbs',
+    giver: 'Old Maren',
+    description: 'Collect 5 medicinal herbs from the forest for Old Maren\'s winter remedies.',
+    itemId: 'herb',
+    required: 5,
+    status: 'inactive',
+  },
+};
+
+// ─── Inventory ───────────────────────────────────────────────────────────────
+const inventory = {
+  sheep: { name: 'Sheep',         icon: '🐑', count: 0 },
+  herb:  { name: 'Medicinal Herb', icon: '🌿', count: 0 },
+};
+
+// ─── Collectibles ─────────────────────────────────────────────────────────────
+// Sheep near farms; herbs in forest. Only visible/collectable when quest is active.
+const SHEEP_SPOTS = [
+  {tx:11,ty:12},{tx:15,ty:11},{tx:18,ty:14},{tx:22,ty:30},
+  {tx:24,ty:26},{tx:19,ty:32},{tx:44,ty:18},{tx:46,ty:23},
+  {tx:40,ty:22},{tx:30,ty:20},
+];
+const HERB_SPOTS = [
+  {tx:54,ty:8},{tx:62,ty:14},{tx:70,ty:6},{tx:58,ty:22},{tx:66,ty:18},
 ];
 
-// Place each villager in front of their matching house door (house bottom-centre + offset)
+const collectibles = [
+  ...SHEEP_SPOTS.map(p => ({x:p.tx*TILE+TILE/2, y:p.ty*TILE+TILE/2, itemId:'sheep', collected:false})),
+  ...HERB_SPOTS.map(p => ({x:p.tx*TILE+TILE/2, y:p.ty*TILE+TILE/2, itemId:'herb',  collected:false})),
+];
+
+function getQuestForItem(itemId) {
+  return Object.values(quests).find(q => q.itemId === itemId) || null;
+}
+
+function drawCollectible(ctx2, c) {
+  const { x, y, itemId } = c;
+  if (itemId === 'sheep') {
+    // Fluffy white sheep
+    ctx2.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx2.beginPath(); ctx2.ellipse(x+2, y+8, 7, 3, 0, 0, Math.PI*2); ctx2.fill();
+    // Body
+    ctx2.fillStyle = '#f0f0ee';
+    ctx2.beginPath(); ctx2.arc(x, y, 8, 0, Math.PI*2); ctx2.fill();
+    ctx2.fillStyle = '#e0e0dc';
+    ctx2.beginPath(); ctx2.arc(x-4, y-2, 5, 0, Math.PI*2); ctx2.fill();
+    ctx2.beginPath(); ctx2.arc(x+4, y-2, 5, 0, Math.PI*2); ctx2.fill();
+    // Head
+    ctx2.fillStyle = '#d4c8b0';
+    ctx2.beginPath(); ctx2.arc(x, y-8, 4, 0, Math.PI*2); ctx2.fill();
+    // Legs
+    ctx2.fillStyle = '#b0a898';
+    for (const lx of [x-4, x-1, x+2, x+5]) {
+      ctx2.fillRect(lx, y+5, 2, 5);
+    }
+  } else {
+    // Herb: green cross + glow
+    ctx2.save();
+    ctx2.globalAlpha = 0.35;
+    ctx2.fillStyle = '#3a8';
+    ctx2.beginPath(); ctx2.arc(x, y, 10, 0, Math.PI*2); ctx2.fill();
+    ctx2.restore();
+    ctx2.fillStyle = '#5cb84a';
+    ctx2.fillRect(x-2, y-7, 4, 14);
+    ctx2.fillRect(x-7, y-2, 14, 4);
+    ctx2.fillStyle = '#80e060';
+    ctx2.beginPath(); ctx2.arc(x-5, y-5, 3, 0, Math.PI*2); ctx2.fill();
+    ctx2.beginPath(); ctx2.arc(x+5, y-5, 3, 0, Math.PI*2); ctx2.fill();
+    ctx2.beginPath(); ctx2.arc(x,   y+5, 3, 0, Math.PI*2); ctx2.fill();
+  }
+}
+
+// ─── Villagers ───────────────────────────────────────────────────────────────
+const VILLAGER_DEFS = [
+  { name:'Old Maren', skinColor:'#d4956a', questId:'forestHerbs',
+    lines:['These lands have been peaceful for many years.',
+           'The forest to the north grows darker each season though.',
+           'Best not to venture too deep without a torch.'],
+    completedLines:['My remedies are made and the village is well.',
+                    'The forest is dangerous. You were very brave to go in.'] },
+  { name:'Finn',       skinColor:'#e8b88a', questId:'lostSheep',
+    lines:['Lovely day, is it not?', 'The farm keeps me busy but I would not trade it.'],
+    completedLines:['My sheep are all safe and sound, thanks to you!',
+                    'You are welcome here any time.'] },
+  { name:'Brix',       skinColor:'#c07850', questId:null,
+    lines:['I built most of these houses myself, you know.',
+           'Good solid wood from the forest. Though I do not go there alone.',
+           'Strange sounds at night...'] },
+  { name:'Lena',       skinColor:'#f0c8a0', questId:null,
+    lines:['The berries are ripe near the forest edge.',
+           'Just mind the roots — they trip you up something awful.',
+           'Welcome to our little village!'] },
+  { name:'Corin',      skinColor:'#a06040', questId:null,
+    lines:['I heard something big moving in the trees last night.',
+           'Probably just a deer. Probably.',
+           'Anyway, nice weather we are having.'] },
+  { name:'Aldric',     skinColor:'#c8905a', questId:null,
+    lines:['Quiet day today. Good for thinking.',
+           'I keep my boots by the door. Always ready to walk.',
+           'Not that anywhere exciting is nearby... yet.'] },
+];
+
 const villagers = VILLAGER_DEFS.map((d, i) => {
   const house = houses[i];
   return {
-    x: house.x + house.w / 2,
-    y: house.y + house.h + 24,   // just outside the door
-    name: d.name, skinColor: d.skinColor, lines: d.lines,
-    lineIndex: 0,
+    x: house.x + house.w/2,
+    y: house.y + house.h + 24,
+    name: d.name, skinColor: d.skinColor,
+    questId: d.questId,
+    lines: d.lines,
+    completedLines: d.completedLines || d.lines,
   };
 });
 
-function drawVillager(ctx2, v) {
-  const x = v.x, y = v.y;
+function buildDialogForVillager(v) {
+  // Returns { lines, hint, onComplete }
+  if (!v.questId) return { lines:[...v.lines], hint:'[F] Continue', onComplete:null };
+  const q = quests[v.questId];
+  const inv = inventory[q.itemId];
 
-  // Shadow
-  ctx2.save(); ctx2.globalAlpha = 0.2;
-  ctx2.fillStyle = '#000';
-  ctx2.beginPath(); ctx2.ellipse(x, y+11, 8, 3, 0, 0, Math.PI*2); ctx2.fill();
-  ctx2.restore();
+  if (q.status === 'inactive') {
+    const offerLines = v.questId === 'lostSheep'
+      ? ['Oh, thank goodness someone stopped by!',
+         'My 10 sheep have wandered off across the fields.',
+         'Would you find them and bring them back?']
+      : ['My old bones ache something fierce this season.',
+         'I need five healing herbs from the forest, but I dare not go myself.',
+         'Would you fetch them for me? They glow faintly among the roots.'];
+    return {
+      lines: offerLines,
+      hint: '[F] Accept Quest',
+      onComplete: () => { q.status = 'active'; showToast('Quest started: ' + q.title); renderMenu(); },
+    };
+  }
 
-  // Legs (static, facing up)
-  ctx2.strokeStyle = '#4466aa'; ctx2.lineWidth = 4; ctx2.lineCap = 'round';
-  ctx2.beginPath(); ctx2.moveTo(x-3, y+3); ctx2.lineTo(x-3, y+11); ctx2.stroke();
-  ctx2.beginPath(); ctx2.moveTo(x+3, y+3); ctx2.lineTo(x+3, y+11); ctx2.stroke();
+  if (q.status === 'active') {
+    if (inv.count >= q.required) {
+      const turnInLines = v.questId === 'lostSheep'
+        ? ['You found all 10 of my sheep!', 'Thank you so very much — I was so worried!', 'Please take this as thanks.']
+        : ['Bless you, child. All five herbs!', 'These will keep the whole village healthy through winter.', 'Here — a small token of my gratitude.'];
+      return {
+        lines: turnInLines,
+        hint: '[F] Complete Quest',
+        onComplete: () => {
+          q.status = 'completed';
+          inv.count -= q.required;
+          showToast('Quest completed: ' + q.title);
+          renderMenu();
+        },
+      };
+    }
+    const progressLines = v.questId === 'lostSheep'
+      ? ['Any sign of my sheep?', `You have ${inv.count} of ${q.required} so far. Keep looking!`]
+      : ['Have you found the herbs yet?', `You have ${inv.count} of ${q.required} needed. They are in the forest.`];
+    return { lines: progressLines, hint: '[F] Continue', onComplete: null };
+  }
 
-  // Body
-  ctx2.fillStyle = '#4488cc';
-  ctx2.beginPath(); ctx2.roundRect(x-6, y-8, 12, 12, 3); ctx2.fill();
-
-  // Arms (relaxed at sides)
-  ctx2.strokeStyle = v.skinColor; ctx2.lineWidth = 3; ctx2.lineCap = 'round';
-  ctx2.beginPath(); ctx2.moveTo(x-6, y-6); ctx2.lineTo(x-10, y+1); ctx2.stroke();
-  ctx2.beginPath(); ctx2.moveTo(x+6, y-6); ctx2.lineTo(x+10, y+1); ctx2.stroke();
-
-  // Head
-  ctx2.fillStyle = v.skinColor;
-  ctx2.beginPath(); ctx2.arc(x, y-13, 7, 0, Math.PI*2); ctx2.fill();
-  ctx2.strokeStyle = 'rgba(0,0,0,0.2)'; ctx2.lineWidth = 1; ctx2.stroke();
-
-  // Eyes (facing up = eyes visible at front of head)
-  ctx2.fillStyle = '#333';
-  ctx2.beginPath(); ctx2.arc(x-2.5, y-14, 1.2, 0, Math.PI*2); ctx2.fill();
-  ctx2.beginPath(); ctx2.arc(x+2.5, y-14, 1.2, 0, Math.PI*2); ctx2.fill();
-
-  // Name tag
-  ctx2.font = '9px sans-serif';
-  ctx2.fillStyle = 'rgba(0,0,0,0.55)';
-  const nameW = ctx2.measureText(v.name).width + 10;
-  ctx2.beginPath(); ctx2.roundRect(x-nameW/2, y-28, nameW, 13, 4); ctx2.fill();
-  ctx2.fillStyle = '#ddd'; ctx2.textAlign = 'center';
-  ctx2.fillText(v.name, x, y-18);
-  ctx2.textAlign = 'left';
+  // completed
+  return { lines:[...v.completedLines], hint:'[F] Continue', onComplete:null };
 }
 
 // ─── Farms ───────────────────────────────────────────────────────────────────
 const FARM_DEFS = [
-  { tx: 13, ty:  8 },
-  { tx: 20, ty: 28 },
-  { tx: 42, ty: 20 },
-  { tx: 28, ty: 46 },
-  { tx: 55, ty: 30 },
+  {tx:13,ty:8},{tx:20,ty:28},{tx:42,ty:20},{tx:28,ty:46},{tx:55,ty:30},
 ];
-const farms = FARM_DEFS.map(d => ({ x: d.tx*TILE, y: d.ty*TILE, w: 8*TILE, h: 6*TILE }));
+const farms = FARM_DEFS.map(d => ({x:d.tx*TILE, y:d.ty*TILE, w:8*TILE, h:6*TILE}));
 
 function drawFarm(ctx2, farm) {
-  const { x, y, w, h } = farm;
-  const pad = TILE;
-  ctx2.fillStyle = '#6b4226';
-  ctx2.fillRect(x+pad, y+pad, w-pad*2, h-pad*2);
-  const innerX = x+pad+8, innerW = w-pad*2-16;
+  const {x,y,w,h}=farm, pad=TILE;
+  ctx2.fillStyle='#6b4226'; ctx2.fillRect(x+pad,y+pad,w-pad*2,h-pad*2);
+  const innerX=x+pad+8, innerW=w-pad*2-16;
   for (const ry of [y+pad+14, y+pad+(h-pad*2)/2-6, y+h-pad-22]) {
-    ctx2.fillStyle = '#7a4e2c';
-    ctx2.fillRect(innerX, ry-4, innerW, 18);
-    for (let px = innerX+8; px < innerX+innerW-8; px += 18) drawCrop(ctx2, px, ry+5);
+    ctx2.fillStyle='#7a4e2c'; ctx2.fillRect(innerX,ry-4,innerW,18);
+    for (let px=innerX+8; px<innerX+innerW-8; px+=18) drawCrop(ctx2,px,ry+5);
   }
-  const postW = 6, postH = 14, postColor = '#8B5E3C', railColor = '#a07040';
-  for (const fy of [y+4, y+h-postH]) {
-    ctx2.fillStyle = railColor; ctx2.fillRect(x+postW/2, fy+postH/2, w-postW, 4);
+  const postW=6,postH=14,postColor='#8B5E3C',railColor='#a07040';
+  for (const fy of [y+4,y+h-postH]) { ctx2.fillStyle=railColor; ctx2.fillRect(x+postW/2,fy+postH/2,w-postW,4); }
+  for (const fx of [x+4,x+w-postW]) { ctx2.fillStyle=railColor; ctx2.fillRect(fx+postW/2,y+postH/2,4,h-postH); }
+  for (let px=x; px<=x+w; px+=2*TILE) {
+    ctx2.fillStyle=postColor;
+    ctx2.fillRect(px-postW/2,y,postW,postH); ctx2.fillRect(px-postW/2,y+h-postH,postW,postH);
   }
-  for (const fx of [x+4, x+w-postW]) {
-    ctx2.fillStyle = railColor; ctx2.fillRect(fx+postW/2, y+postH/2, 4, h-postH);
-  }
-  for (let px = x; px <= x+w; px += 2*TILE) {
-    ctx2.fillStyle = postColor;
-    ctx2.fillRect(px-postW/2, y, postW, postH);
-    ctx2.fillRect(px-postW/2, y+h-postH, postW, postH);
-  }
-  for (let py = y+2*TILE; py < y+h; py += 2*TILE) {
-    ctx2.fillStyle = postColor;
-    ctx2.fillRect(x-postW/2, py-postH/2, postW, postH);
-    ctx2.fillRect(x+w-postW/2, py-postH/2, postW, postH);
+  for (let py=y+2*TILE; py<y+h; py+=2*TILE) {
+    ctx2.fillStyle=postColor;
+    ctx2.fillRect(x-postW/2,py-postH/2,postW,postH); ctx2.fillRect(x+w-postW/2,py-postH/2,postW,postH);
   }
 }
-
-function drawCrop(ctx2, x, y) {
-  ctx2.strokeStyle = '#3a8c2a'; ctx2.lineWidth = 1.5;
-  ctx2.beginPath(); ctx2.moveTo(x, y); ctx2.lineTo(x, y-10); ctx2.stroke();
-  ctx2.strokeStyle = '#55b040'; ctx2.lineWidth = 1;
-  ctx2.beginPath(); ctx2.moveTo(x, y-5); ctx2.lineTo(x-5, y-9); ctx2.stroke();
-  ctx2.beginPath(); ctx2.moveTo(x, y-5); ctx2.lineTo(x+5, y-9); ctx2.stroke();
+function drawCrop(ctx2,x,y) {
+  ctx2.strokeStyle='#3a8c2a'; ctx2.lineWidth=1.5;
+  ctx2.beginPath(); ctx2.moveTo(x,y); ctx2.lineTo(x,y-10); ctx2.stroke();
+  ctx2.strokeStyle='#55b040'; ctx2.lineWidth=1;
+  ctx2.beginPath(); ctx2.moveTo(x,y-5); ctx2.lineTo(x-5,y-9); ctx2.stroke();
+  ctx2.beginPath(); ctx2.moveTo(x,y-5); ctx2.lineTo(x+5,y-9); ctx2.stroke();
 }
 
 // ─── House drawing ───────────────────────────────────────────────────────────
 function drawHouseFloor(ctx2, house) {
-  const { x, y, w, h } = house;
-  ctx2.fillStyle = '#c8a86a';
-  ctx2.fillRect(x+WALL_T, y+WALL_T, w-WALL_T*2, h-WALL_T*2);
-  ctx2.strokeStyle = 'rgba(0,0,0,0.1)'; ctx2.lineWidth = 1;
-  for (let ly = y+WALL_T+12; ly < y+h-WALL_T; ly += 12) {
-    ctx2.beginPath(); ctx2.moveTo(x+WALL_T, ly); ctx2.lineTo(x+w-WALL_T, ly); ctx2.stroke();
+  const {x,y,w,h}=house;
+  ctx2.fillStyle='#c8a86a'; ctx2.fillRect(x+WALL_T,y+WALL_T,w-WALL_T*2,h-WALL_T*2);
+  ctx2.strokeStyle='rgba(0,0,0,0.1)'; ctx2.lineWidth=1;
+  for (let ly=y+WALL_T+12; ly<y+h-WALL_T; ly+=12) {
+    ctx2.beginPath(); ctx2.moveTo(x+WALL_T,ly); ctx2.lineTo(x+w-WALL_T,ly); ctx2.stroke();
   }
 }
-
 function drawHouseWalls(ctx2, house) {
-  const { x, y, w, h, wallColor, roofColor, doorOpen } = house;
-  const ds = w/2 - DOOR_W/2;
-  ctx2.fillStyle = 'rgba(0,0,0,0.2)'; ctx2.fillRect(x+6, y+6, w, h);
-  ctx2.fillStyle = wallColor;
-  ctx2.fillRect(x, y, w, WALL_T);
-  ctx2.fillRect(x, y, WALL_T, h);
-  ctx2.fillRect(x+w-WALL_T, y, WALL_T, h);
-  ctx2.fillRect(x, y+h-WALL_T, ds, WALL_T);
-  ctx2.fillRect(x+ds+DOOR_W, y+h-WALL_T, w-ds-DOOR_W, WALL_T);
-  ctx2.strokeStyle = roofColor; ctx2.lineWidth = 2;
-  ctx2.strokeRect(x+ds-2, y+h-WALL_T-TILE, DOOR_W+4, TILE+WALL_T);
+  const {x,y,w,h,wallColor,roofColor,doorOpen}=house;
+  const ds=w/2-DOOR_W/2;
+  ctx2.fillStyle='rgba(0,0,0,0.2)'; ctx2.fillRect(x+6,y+6,w,h);
+  ctx2.fillStyle=wallColor;
+  ctx2.fillRect(x,y,w,WALL_T); ctx2.fillRect(x,y,WALL_T,h);
+  ctx2.fillRect(x+w-WALL_T,y,WALL_T,h);
+  ctx2.fillRect(x,y+h-WALL_T,ds,WALL_T);
+  ctx2.fillRect(x+ds+DOOR_W,y+h-WALL_T,w-ds-DOOR_W,WALL_T);
+  ctx2.strokeStyle=roofColor; ctx2.lineWidth=2;
+  ctx2.strokeRect(x+ds-2,y+h-WALL_T-TILE,DOOR_W+4,TILE+WALL_T);
   if (!doorOpen) {
-    ctx2.fillStyle = roofColor;
-    ctx2.fillRect(x+ds, y+h-WALL_T-TILE+2, DOOR_W, TILE-2);
-    ctx2.fillStyle = '#f0c040';
-    ctx2.beginPath(); ctx2.arc(x+ds+DOOR_W-7, y+h-WALL_T-TILE/2, 3, 0, Math.PI*2); ctx2.fill();
+    ctx2.fillStyle=roofColor; ctx2.fillRect(x+ds,y+h-WALL_T-TILE+2,DOOR_W,TILE-2);
+    ctx2.fillStyle='#f0c040';
+    ctx2.beginPath(); ctx2.arc(x+ds+DOOR_W-7,y+h-WALL_T-TILE/2,3,0,Math.PI*2); ctx2.fill();
   } else {
-    ctx2.fillStyle = roofColor;
-    ctx2.fillRect(x+ds-WALL_T-TILE+2, y+h-WALL_T-TILE+2, TILE-2, TILE-2);
-    ctx2.fillStyle = '#f0c040';
-    ctx2.beginPath(); ctx2.arc(x+ds-WALL_T-4, y+h-WALL_T-TILE/2, 3, 0, Math.PI*2); ctx2.fill();
+    ctx2.fillStyle=roofColor; ctx2.fillRect(x+ds-WALL_T-TILE+2,y+h-WALL_T-TILE+2,TILE-2,TILE-2);
+    ctx2.fillStyle='#f0c040';
+    ctx2.beginPath(); ctx2.arc(x+ds-WALL_T-4,y+h-WALL_T-TILE/2,3,0,Math.PI*2); ctx2.fill();
   }
-  const winY = y+TILE*0.6, winW = TILE*0.55, winH = TILE*0.5;
+  const winY=y+TILE*0.6, winW=TILE*0.55, winH=TILE*0.5;
   for (const wx of [x+WALL_T+6, x+w-WALL_T-6-winW]) {
-    ctx2.fillStyle = '#b8d8f0'; ctx2.fillRect(wx, winY, winW, winH);
-    ctx2.strokeStyle = wallColor; ctx2.lineWidth = 2; ctx2.strokeRect(wx, winY, winW, winH);
-    ctx2.strokeStyle = 'rgba(0,0,0,0.15)'; ctx2.lineWidth = 1;
+    ctx2.fillStyle='#b8d8f0'; ctx2.fillRect(wx,winY,winW,winH);
+    ctx2.strokeStyle=wallColor; ctx2.lineWidth=2; ctx2.strokeRect(wx,winY,winW,winH);
+    ctx2.strokeStyle='rgba(0,0,0,0.15)'; ctx2.lineWidth=1;
     ctx2.beginPath();
-    ctx2.moveTo(wx+winW/2, winY); ctx2.lineTo(wx+winW/2, winY+winH);
-    ctx2.moveTo(wx, winY+winH/2); ctx2.lineTo(wx+winW, winY+winH/2);
+    ctx2.moveTo(wx+winW/2,winY); ctx2.lineTo(wx+winW/2,winY+winH);
+    ctx2.moveTo(wx,winY+winH/2); ctx2.lineTo(wx+winW,winY+winH/2);
     ctx2.stroke();
   }
-  ctx2.fillStyle = roofColor;
-  ctx2.beginPath();
-  ctx2.moveTo(x-8, y); ctx2.lineTo(x+w/2, y-TILE*0.9); ctx2.lineTo(x+w+8, y);
+  ctx2.fillStyle=roofColor;
+  ctx2.beginPath(); ctx2.moveTo(x-8,y); ctx2.lineTo(x+w/2,y-TILE*0.9); ctx2.lineTo(x+w+8,y);
   ctx2.closePath(); ctx2.fill();
-  ctx2.strokeStyle = 'rgba(0,0,0,0.2)'; ctx2.lineWidth = 2; ctx2.stroke();
-  ctx2.strokeStyle = 'rgba(0,0,0,0.3)'; ctx2.lineWidth = 1;
-  ctx2.strokeRect(x, y, w, h);
+  ctx2.strokeStyle='rgba(0,0,0,0.2)'; ctx2.lineWidth=2; ctx2.stroke();
+  ctx2.strokeStyle='rgba(0,0,0,0.3)'; ctx2.lineWidth=1; ctx2.strokeRect(x,y,w,h);
+}
+
+// ─── Villager drawing ────────────────────────────────────────────────────────
+function drawVillager(ctx2, v) {
+  const {x,y}=v;
+  ctx2.save(); ctx2.globalAlpha=0.2; ctx2.fillStyle='#000';
+  ctx2.beginPath(); ctx2.ellipse(x,y+11,8,3,0,0,Math.PI*2); ctx2.fill(); ctx2.restore();
+  ctx2.strokeStyle='#4466aa'; ctx2.lineWidth=4; ctx2.lineCap='round';
+  ctx2.beginPath(); ctx2.moveTo(x-3,y+3); ctx2.lineTo(x-3,y+11); ctx2.stroke();
+  ctx2.beginPath(); ctx2.moveTo(x+3,y+3); ctx2.lineTo(x+3,y+11); ctx2.stroke();
+  ctx2.fillStyle='#4488cc';
+  ctx2.beginPath(); ctx2.roundRect(x-6,y-8,12,12,3); ctx2.fill();
+  ctx2.strokeStyle=v.skinColor; ctx2.lineWidth=3; ctx2.lineCap='round';
+  ctx2.beginPath(); ctx2.moveTo(x-6,y-6); ctx2.lineTo(x-10,y+1); ctx2.stroke();
+  ctx2.beginPath(); ctx2.moveTo(x+6,y-6); ctx2.lineTo(x+10,y+1); ctx2.stroke();
+  ctx2.fillStyle=v.skinColor;
+  ctx2.beginPath(); ctx2.arc(x,y-13,7,0,Math.PI*2); ctx2.fill();
+  ctx2.strokeStyle='rgba(0,0,0,0.2)'; ctx2.lineWidth=1; ctx2.stroke();
+  ctx2.fillStyle='#333';
+  ctx2.beginPath(); ctx2.arc(x-2.5,y-14,1.2,0,Math.PI*2); ctx2.fill();
+  ctx2.beginPath(); ctx2.arc(x+2.5,y-14,1.2,0,Math.PI*2); ctx2.fill();
+
+  // Quest indicator bubble
+  if (v.questId) {
+    const q = quests[v.questId];
+    if (q.status === 'inactive') {
+      ctx2.fillStyle='#f0c040';
+      ctx2.font='bold 12px sans-serif'; ctx2.textAlign='center';
+      ctx2.fillText('!', x, y-26);
+      ctx2.textAlign='left';
+    } else if (q.status === 'active' && inventory[q.itemId].count >= q.required) {
+      ctx2.fillStyle='#4ddd88';
+      ctx2.font='bold 11px sans-serif'; ctx2.textAlign='center';
+      ctx2.fillText('?', x, y-26);
+      ctx2.textAlign='left';
+    }
+  }
+
+  ctx2.font='9px sans-serif';
+  ctx2.fillStyle='rgba(0,0,0,0.55)';
+  const nw=ctx2.measureText(v.name).width+10;
+  ctx2.beginPath(); ctx2.roundRect(x-nw/2,y-28,nw,13,4); ctx2.fill();
+  ctx2.fillStyle='#ddd'; ctx2.textAlign='center';
+  ctx2.fillText(v.name,x,y-18); ctx2.textAlign='left';
 }
 
 // ─── Player ──────────────────────────────────────────────────────────────────
 const player = {
-  x: (MAP_COLS/2)*TILE, y: (MAP_ROWS/2)*TILE,
-  facing: Math.PI/2,
-  stamina: STAMINA_MAX,
-  sprinting: false,
-  walkCycle: 0,
+  x:(MAP_COLS/2)*TILE, y:(MAP_ROWS/2)*TILE,
+  stamina:STAMINA_MAX, sprinting:false, walkCycle:0,
 };
-
 function drawPlayer(ctx2, p) {
-  const { x, y, walkCycle, sprinting } = p;
-  const moving = keys['w']||keys['s']||keys['a']||keys['d']||
-                 keys['arrowup']||keys['arrowdown']||keys['arrowleft']||keys['arrowright'];
-  const wb = moving ? Math.sin(walkCycle * 8) * 3 : 0;
-
-  // Shadow
-  ctx2.save(); ctx2.globalAlpha = 0.2;
-  ctx2.fillStyle = '#000';
-  ctx2.beginPath(); ctx2.ellipse(x, y+12, 9, 3.5, 0, 0, Math.PI*2); ctx2.fill();
-  ctx2.restore();
-
-  // Legs
-  ctx2.strokeStyle = sprinting ? '#3355bb' : '#4466aa';
-  ctx2.lineWidth = 4; ctx2.lineCap = 'round';
-  ctx2.beginPath(); ctx2.moveTo(x-3, y+3); ctx2.lineTo(x-3+wb, y+12); ctx2.stroke();
-  ctx2.beginPath(); ctx2.moveTo(x+3, y+3); ctx2.lineTo(x+3-wb, y+12); ctx2.stroke();
-
-  // Body / shirt
-  ctx2.fillStyle = sprinting ? '#cc5533' : '#3377cc';
-  ctx2.beginPath(); ctx2.roundRect(x-6, y-8, 12, 13, 3); ctx2.fill();
-
-  // Arms
-  ctx2.strokeStyle = '#e0aa80'; ctx2.lineWidth = 3; ctx2.lineCap = 'round';
-  ctx2.beginPath(); ctx2.moveTo(x-6, y-5); ctx2.lineTo(x-11, y+1+wb); ctx2.stroke();
-  ctx2.beginPath(); ctx2.moveTo(x+6, y-5); ctx2.lineTo(x+11, y+1-wb); ctx2.stroke();
-
-  // Head
-  ctx2.fillStyle = '#e8b070';
-  ctx2.beginPath(); ctx2.arc(x, y-15, 8, 0, Math.PI*2); ctx2.fill();
-  ctx2.strokeStyle = 'rgba(0,0,0,0.2)'; ctx2.lineWidth = 1; ctx2.stroke();
-
-  // Hair
-  ctx2.fillStyle = '#5c3010';
-  ctx2.beginPath(); ctx2.ellipse(x, y-20, 8, 5, 0, Math.PI, Math.PI*2); ctx2.fill();
-
-  // Eyes
-  ctx2.fillStyle = '#333';
-  ctx2.beginPath(); ctx2.arc(x-3, y-15, 1.3, 0, Math.PI*2); ctx2.fill();
-  ctx2.beginPath(); ctx2.arc(x+3, y-15, 1.3, 0, Math.PI*2); ctx2.fill();
+  const {x,y,walkCycle,sprinting}=p;
+  const moving=keys['w']||keys['s']||keys['a']||keys['d']||
+               keys['arrowup']||keys['arrowdown']||keys['arrowleft']||keys['arrowright'];
+  const wb=moving?Math.sin(walkCycle*8)*3:0;
+  ctx2.save(); ctx2.globalAlpha=0.2; ctx2.fillStyle='#000';
+  ctx2.beginPath(); ctx2.ellipse(x,y+12,9,3.5,0,0,Math.PI*2); ctx2.fill(); ctx2.restore();
+  ctx2.strokeStyle=sprinting?'#3355bb':'#4466aa'; ctx2.lineWidth=4; ctx2.lineCap='round';
+  ctx2.beginPath(); ctx2.moveTo(x-3,y+3); ctx2.lineTo(x-3+wb,y+12); ctx2.stroke();
+  ctx2.beginPath(); ctx2.moveTo(x+3,y+3); ctx2.lineTo(x+3-wb,y+12); ctx2.stroke();
+  ctx2.fillStyle=sprinting?'#cc5533':'#3377cc';
+  ctx2.beginPath(); ctx2.roundRect(x-6,y-8,12,13,3); ctx2.fill();
+  ctx2.strokeStyle='#e0aa80'; ctx2.lineWidth=3; ctx2.lineCap='round';
+  ctx2.beginPath(); ctx2.moveTo(x-6,y-5); ctx2.lineTo(x-11,y+1+wb); ctx2.stroke();
+  ctx2.beginPath(); ctx2.moveTo(x+6,y-5); ctx2.lineTo(x+11,y+1-wb); ctx2.stroke();
+  ctx2.fillStyle='#e8b070';
+  ctx2.beginPath(); ctx2.arc(x,y-15,8,0,Math.PI*2); ctx2.fill();
+  ctx2.strokeStyle='rgba(0,0,0,0.2)'; ctx2.lineWidth=1; ctx2.stroke();
+  ctx2.fillStyle='#5c3010';
+  ctx2.beginPath(); ctx2.ellipse(x,y-20,8,5,0,Math.PI,Math.PI*2); ctx2.fill();
+  ctx2.fillStyle='#333';
+  ctx2.beginPath(); ctx2.arc(x-3,y-15,1.3,0,Math.PI*2); ctx2.fill();
+  ctx2.beginPath(); ctx2.arc(x+3,y-15,1.3,0,Math.PI*2); ctx2.fill();
 }
 
 // ─── Collision ───────────────────────────────────────────────────────────────
-function resolveCircleRect(px, py, rect) {
-  const nearX = Math.max(rect.x, Math.min(px, rect.x+rect.w));
-  const nearY = Math.max(rect.y, Math.min(py, rect.y+rect.h));
-  const dx = px-nearX, dy = py-nearY;
-  const d2 = dx*dx+dy*dy;
-  if (d2 < PLAYER_R*PLAYER_R) {
-    const d = Math.sqrt(d2) || 0.01;
-    return { x: px+(dx/d)*(PLAYER_R-d), y: py+(dy/d)*(PLAYER_R-d) };
+function resolveCircleRect(px,py,rect) {
+  const nx=Math.max(rect.x,Math.min(px,rect.x+rect.w));
+  const ny=Math.max(rect.y,Math.min(py,rect.y+rect.h));
+  const dx=px-nx, dy=py-ny, d2=dx*dx+dy*dy;
+  if (d2<PLAYER_R*PLAYER_R) {
+    const d=Math.sqrt(d2)||0.01;
+    return {x:px+(dx/d)*(PLAYER_R-d), y:py+(dy/d)*(PLAYER_R-d)};
   }
   return null;
 }
 
 // ─── Input ───────────────────────────────────────────────────────────────────
-const keys = {};
-let ePressed = false, fPressed = false;
+const keys={};
+let ePressed=false, fPressed=false, iPressed=false;
 window.addEventListener('keydown', e => {
-  const k = e.key.toLowerCase();
-  keys[k] = true;
-  if (k === 'e') ePressed = true;
-  if (k === 'f') fPressed = true;
+  const k=e.key.toLowerCase();
+  keys[k]=true;
+  if (k==='e') ePressed=true;
+  if (k==='f') fPressed=true;
+  if (k==='i') iPressed=true;
+  if (k==='escape') closeMenu();
   e.preventDefault();
 });
-window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()]=false; });
 
 // ─── Dialog ──────────────────────────────────────────────────────────────────
-let dialogVillager = null;
+let dialogVillager=null, dialogLines=[], dialogLineIdx=0;
+let dialogOnComplete=null, dialogFinalHint='[F] Continue';
 const dialogBox  = document.getElementById('dialog-box');
 const dialogName = document.getElementById('dialog-name');
 const dialogText = document.getElementById('dialog-text');
+const dialogHint = document.getElementById('dialog-hint');
 
 function openDialog(v) {
-  dialogVillager = v;
-  dialogName.textContent = v.name;
-  dialogText.textContent = v.lines[v.lineIndex];
+  const {lines, hint, onComplete} = buildDialogForVillager(v);
+  dialogVillager=v; dialogLines=lines; dialogLineIdx=0;
+  dialogOnComplete=onComplete; dialogFinalHint=hint;
+  dialogName.textContent=v.name;
+  dialogText.textContent=lines[0];
+  dialogHint.textContent = lines.length===1 ? hint : '[F] Continue';
   dialogBox.classList.add('show');
 }
 function advanceDialog() {
   if (!dialogVillager) return;
-  dialogVillager.lineIndex = (dialogVillager.lineIndex + 1) % dialogVillager.lines.length;
-  if (dialogVillager.lineIndex === 0) {
-    dialogBox.classList.remove('show');
-    dialogVillager = null;
-  } else {
-    dialogText.textContent = dialogVillager.lines[dialogVillager.lineIndex];
+  dialogLineIdx++;
+  if (dialogLineIdx>=dialogLines.length) {
+    if (dialogOnComplete) dialogOnComplete();
+    closeDialog(); return;
   }
+  dialogText.textContent=dialogLines[dialogLineIdx];
+  const isLast = dialogLineIdx===dialogLines.length-1;
+  dialogHint.textContent = isLast ? dialogFinalHint : '[F] Continue';
+}
+function closeDialog() {
+  dialogBox.classList.remove('show');
+  dialogVillager=null;
+}
+
+// ─── Menu ────────────────────────────────────────────────────────────────────
+let menuOpen=false, menuTab='quests';
+const menuOverlay = document.getElementById('menu-overlay');
+const menuBody    = document.getElementById('menu-body');
+const menuTabBtns = document.querySelectorAll('.menu-tab');
+
+menuTabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    menuTab = btn.dataset.tab;
+    menuTabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab===menuTab));
+    renderMenuBody();
+  });
+});
+
+function openMenu()  { menuOpen=true;  menuOverlay.classList.add('show');    renderMenu(); }
+function closeMenu() { menuOpen=false; menuOverlay.classList.remove('show'); }
+function toggleMenu(){ menuOpen ? closeMenu() : openMenu(); }
+
+function renderMenu() {
+  menuTabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab===menuTab));
+  renderMenuBody();
+}
+function renderMenuBody() {
+  if (menuTab==='quests') renderQuestsTab();
+  else renderInventoryTab();
+}
+
+function renderQuestsTab() {
+  const qs = Object.values(quests);
+  if (qs.every(q=>q.status==='inactive')) {
+    menuBody.innerHTML='<div class="inv-empty">No quests yet — talk to villagers!</div>';
+    return;
+  }
+  menuBody.innerHTML = qs.filter(q=>q.status!=='inactive').map(q => {
+    const inv = inventory[q.itemId];
+    const have = Math.min(inv.count, q.required);
+    const pct  = Math.round((have/q.required)*100);
+    const badgeClass = q.status==='completed' ? 'badge-completed' : 'badge-active';
+    const badgeText  = q.status==='completed' ? 'Completed' : 'Active';
+    const progressHtml = q.status==='active' ? `
+      <div class="quest-progress">${have} / ${q.required} ${inv.name}s collected</div>
+      <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+    ` : `<div class="quest-progress" style="color:#4a9">All items returned ✓</div>`;
+    return `<div class="quest-entry">
+      <div class="quest-header">
+        <span class="quest-title">${q.title}</span>
+        <span class="quest-badge ${badgeClass}">${badgeText}</span>
+      </div>
+      <div class="quest-desc">${q.description}</div>
+      ${progressHtml}
+    </div>`;
+  }).join('');
+}
+
+function renderInventoryTab() {
+  const items = Object.values(inventory).filter(i=>i.count>0);
+  if (!items.length) {
+    menuBody.innerHTML='<div class="inv-empty">Your inventory is empty</div>';
+    return;
+  }
+  menuBody.innerHTML = items.map(item => `
+    <div class="inv-item">
+      <span class="inv-icon">${item.icon}</span>
+      <span class="inv-name">${item.name}</span>
+      <span class="inv-count">×${item.count}</span>
+    </div>
+  `).join('');
+}
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+let toastTimer=null;
+const toastEl=document.getElementById('quest-toast');
+function showToast(msg) {
+  toastEl.textContent=msg; toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>toastEl.classList.remove('show'),3000);
 }
 
 // ─── Camera ──────────────────────────────────────────────────────────────────
-const cam = { x: player.x, y: player.y };
+const cam={x:player.x, y:player.y};
 
 // ─── Sprint HUD ──────────────────────────────────────────────────────────────
 const sprintBar  = document.getElementById('sprint-bar');
 const sprintFill = document.getElementById('sprint-fill');
-
-// ─── Prompt ──────────────────────────────────────────────────────────────────
-const promptEl = document.getElementById('interact-prompt');
+const promptEl   = document.getElementById('interact-prompt');
 
 // ─── Minimap ─────────────────────────────────────────────────────────────────
-function drawMinimap(W, H) {
-  const mmW = 130, mmH = 130;
-  const mmX = W-mmW-14, mmY = H-mmH-14;
-  const sx = mmW/(MAP_COLS*TILE), sy = mmH/(MAP_ROWS*TILE);
-  ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.beginPath(); ctx.roundRect(mmX-4, mmY-4, mmW+8, mmH+8, 6); ctx.fill();
-  ctx.drawImage(mapCanvas, mmX, mmY, mmW, mmH);
-  // Forest tint
-  ctx.fillStyle = 'rgba(0,60,0,0.35)';
-  ctx.fillRect(mmX+FOREST_C0*TILE*sx, mmY+FOREST_R0*TILE*sy,
-    (FOREST_C1-FOREST_C0+1)*TILE*sx, (FOREST_R1-FOREST_R0+1)*TILE*sy);
-  ctx.fillStyle = 'rgba(80,160,60,0.45)';
-  for (const f of farms) ctx.fillRect(mmX+f.x*sx, mmY+f.y*sy, f.w*sx, f.h*sy);
-  ctx.fillStyle = '#c9935a';
-  for (const h of houses) ctx.fillRect(mmX+h.x*sx, mmY+h.y*sy, h.w*sx, h.h*sy);
-  ctx.fillStyle = '#ffdd88';
-  for (const v of villagers) {
-    ctx.beginPath(); ctx.arc(mmX+v.x*sx, mmY+v.y*sy, 2, 0, Math.PI*2); ctx.fill();
-  }
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(mmX+player.x*sx, mmY+player.y*sy, 3, 0, Math.PI*2); ctx.fill();
-  ctx.strokeStyle = '#1a3a6a'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.roundRect(mmX-4, mmY-4, mmW+8, mmH+8, 6); ctx.stroke();
+function drawMinimap(W,H) {
+  const mmW=130,mmH=130,mmX=W-mmW-14,mmY=H-mmH-14;
+  const sx=mmW/(MAP_COLS*TILE), sy=mmH/(MAP_ROWS*TILE);
+  ctx.fillStyle='rgba(0,0,0,0.6)';
+  ctx.beginPath(); ctx.roundRect(mmX-4,mmY-4,mmW+8,mmH+8,6); ctx.fill();
+  ctx.drawImage(mapCanvas,mmX,mmY,mmW,mmH);
+  ctx.fillStyle='rgba(0,60,0,0.35)';
+  ctx.fillRect(mmX+FOREST_C0*TILE*sx,mmY,
+    (FOREST_C1-FOREST_C0+1)*TILE*sx,(FOREST_R1-FOREST_R0+1)*TILE*sy);
+  ctx.fillStyle='rgba(80,160,60,0.45)';
+  for (const f of farms) ctx.fillRect(mmX+f.x*sx,mmY+f.y*sy,f.w*sx,f.h*sy);
+  ctx.fillStyle='#c9935a';
+  for (const h of houses) ctx.fillRect(mmX+h.x*sx,mmY+h.y*sy,h.w*sx,h.h*sy);
+  ctx.fillStyle='#ffdd88';
+  for (const v of villagers) { ctx.beginPath(); ctx.arc(mmX+v.x*sx,mmY+v.y*sy,2,0,Math.PI*2); ctx.fill(); }
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.arc(mmX+player.x*sx,mmY+player.y*sy,3,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#1a3a6a'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.roundRect(mmX-4,mmY-4,mmW+8,mmH+8,6); ctx.stroke();
 }
 
 // ─── Update ──────────────────────────────────────────────────────────────────
 function update(dt) {
+  // Toggle menu
+  if (iPressed) { toggleMenu(); iPressed=false; }
+
+  if (menuOpen) {
+    ePressed=fPressed=iPressed=false;
+    const lerp=1-Math.pow(0.01,dt);
+    cam.x+=(player.x-cam.x)*lerp; cam.y+=(player.y-cam.y)*lerp;
+    return;
+  }
+
   // Dialog blocks movement
   if (dialogVillager) {
     if (fPressed) advanceDialog();
-    ePressed = fPressed = false;
-    const lerp = 1 - Math.pow(0.01, dt);
-    cam.x += (player.x - cam.x) * lerp;
-    cam.y += (player.y - cam.y) * lerp;
+    ePressed=fPressed=false;
+    const lerp=1-Math.pow(0.01,dt);
+    cam.x+=(player.x-cam.x)*lerp; cam.y+=(player.y-cam.y)*lerp;
     return;
   }
 
   // Sprint
-  const wantSprint = (keys['shift'] || keys['shiftleft'] || keys['shiftright']) && player.stamina > 0;
-  if (wantSprint) {
-    player.stamina = Math.max(0, player.stamina - STAMINA_DRAIN * dt);
-    player.sprinting = true;
-  } else {
-    player.stamina = Math.min(STAMINA_MAX, player.stamina + STAMINA_REGEN * dt);
-    player.sprinting = false;
-  }
-  const speed = player.sprinting ? SPRINT_SPEED : PLAYER_SPEED;
-
-  // Stamina bar
-  const pct = player.stamina / STAMINA_MAX;
-  sprintFill.style.width = (pct * 100) + '%';
-  sprintFill.style.background = pct < 0.25 ? '#e05030' : pct < 0.6 ? '#e0a030' : '#5ad';
-  if (player.sprinting || player.stamina < STAMINA_MAX) sprintBar.classList.add('show');
+  const wantSprint=(keys['shift']||keys['shiftleft']||keys['shiftright'])&&player.stamina>0;
+  player.sprinting=wantSprint;
+  if (wantSprint) player.stamina=Math.max(0,player.stamina-STAMINA_DRAIN*dt);
+  else            player.stamina=Math.min(STAMINA_MAX,player.stamina+STAMINA_REGEN*dt);
+  const speed=player.sprinting?SPRINT_SPEED:PLAYER_SPEED;
+  const pct=player.stamina/STAMINA_MAX;
+  sprintFill.style.width=(pct*100)+'%';
+  sprintFill.style.background=pct<0.25?'#e05030':pct<0.6?'#e0a030':'#5ad';
+  if (player.sprinting||player.stamina<STAMINA_MAX) sprintBar.classList.add('show');
   else sprintBar.classList.remove('show');
 
   // Movement
-  let dx = 0, dy = 0;
-  if (keys['w'] || keys['arrowup'])    dy -= 1;
-  if (keys['s'] || keys['arrowdown'])  dy += 1;
-  if (keys['a'] || keys['arrowleft'])  dx -= 1;
-  if (keys['d'] || keys['arrowright']) dx += 1;
-  if (dx !== 0 || dy !== 0) {
-    const len = Math.sqrt(dx*dx+dy*dy);
-    dx /= len; dy /= len;
-    player.x += dx * speed * dt;
-    player.y += dy * speed * dt;
-    player.walkCycle += dt;
+  let dx=0,dy=0;
+  if (keys['w']||keys['arrowup'])    dy-=1;
+  if (keys['s']||keys['arrowdown'])  dy+=1;
+  if (keys['a']||keys['arrowleft'])  dx-=1;
+  if (keys['d']||keys['arrowright']) dx+=1;
+  if (dx!==0||dy!==0) {
+    const len=Math.sqrt(dx*dx+dy*dy);
+    dx/=len; dy/=len;
+    player.x+=dx*speed*dt; player.y+=dy*speed*dt;
+    player.walkCycle+=dt;
   }
-
-  // Map clamp
-  player.x = Math.max(PLAYER_R, Math.min(MAP_COLS*TILE-PLAYER_R, player.x));
-  player.y = Math.max(PLAYER_R, Math.min(MAP_ROWS*TILE-PLAYER_R, player.y));
+  player.x=Math.max(PLAYER_R,Math.min(MAP_COLS*TILE-PLAYER_R,player.x));
+  player.y=Math.max(PLAYER_R,Math.min(MAP_ROWS*TILE-PLAYER_R,player.y));
 
   // House collision
   for (const house of houses)
     for (const rect of getHouseWalls(house)) {
-      const r = resolveCircleRect(player.x, player.y, rect);
-      if (r) { player.x = r.x; player.y = r.y; }
+      const r=resolveCircleRect(player.x,player.y,rect);
+      if (r) {player.x=r.x; player.y=r.y;}
     }
-
-  // Tree collision (trunk only)
+  // Tree collision
   for (const t of trees) {
-    const minDist = PLAYER_R + t.r * 0.45;
-    const dx2 = player.x - t.x, dy2 = player.y - t.y;
-    const d = Math.sqrt(dx2*dx2+dy2*dy2);
-    if (d < minDist && d > 0) {
-      player.x += (dx2/d)*(minDist-d);
-      player.y += (dy2/d)*(minDist-d);
+    const minD=PLAYER_R+t.r*0.45;
+    const dx2=player.x-t.x, dy2=player.y-t.y, d=Math.sqrt(dx2*dx2+dy2*dy2);
+    if (d<minD&&d>0) {player.x+=(dx2/d)*(minD-d); player.y+=(dy2/d)*(minD-d);}
+  }
+
+  // Collect items (auto, walk-over)
+  for (const c of collectibles) {
+    if (c.collected) continue;
+    const q=getQuestForItem(c.itemId);
+    if (!q||q.status!=='active') continue; // only active quest items are visible/collectible
+    const d=Math.hypot(player.x-c.x,player.y-c.y);
+    if (d<COLLECT_DIST) {
+      c.collected=true;
+      inventory[c.itemId].count++;
+      renderMenu();
     }
   }
 
-  // Determine nearest interactable
-  let nearestDoor = null, nearestDoorDist = Infinity;
-  for (const house of houses) {
-    const dc = doorCenter(house);
-    const d = Math.hypot(player.x-dc.x, player.y-dc.y);
-    if (d < nearestDoorDist) { nearestDoorDist = d; nearestDoor = house; }
+  // Nearest interactable
+  let nearDoor=null, nearDoorDist=Infinity;
+  for (const h of houses) {
+    const dc=doorCenter(h), d=Math.hypot(player.x-dc.x,player.y-dc.y);
+    if (d<nearDoorDist){nearDoorDist=d;nearDoor=h;}
   }
-
-  let nearestVillager = null, nearestVillagerDist = Infinity;
+  let nearVillager=null, nearVillagerDist=Infinity;
   for (const v of villagers) {
-    const d = Math.hypot(player.x-v.x, player.y-v.y);
-    if (d < nearestVillagerDist) { nearestVillagerDist = d; nearestVillager = v; }
+    const d=Math.hypot(player.x-v.x,player.y-v.y);
+    if (d<nearVillagerDist){nearVillagerDist=d;nearVillager=v;}
   }
 
-  // Prompt priority: villager > door
-  if (nearestVillagerDist < TALK_DIST) {
-    promptEl.textContent = '[F] Talk to ' + nearestVillager.name;
+  if (nearVillagerDist<TALK_DIST) {
+    const q=nearVillager.questId?quests[nearVillager.questId]:null;
+    const inv=q?inventory[q.itemId]:null;
+    let label='[F] Talk to '+nearVillager.name;
+    if (q&&q.status==='active'&&inv.count>=q.required) label='[F] Turn in: '+q.title;
+    else if (q&&q.status==='inactive')                  label='[F] Quest: '+nearVillager.name;
+    promptEl.textContent=label; promptEl.classList.add('show');
+    if (fPressed) openDialog(nearVillager);
+  } else if (nearDoorDist<INTERACT_DIST) {
+    promptEl.textContent=nearDoor.doorOpen?'[E] Close door':'[E] Open door';
     promptEl.classList.add('show');
-    if (fPressed) openDialog(nearestVillager);
-  } else if (nearestDoorDist < INTERACT_DIST) {
-    promptEl.textContent = nearestDoor.doorOpen ? '[E] Close door' : '[E] Open door';
-    promptEl.classList.add('show');
-    if (ePressed) nearestDoor.doorOpen = !nearestDoor.doorOpen;
+    if (ePressed) nearDoor.doorOpen=!nearDoor.doorOpen;
   } else {
     promptEl.classList.remove('show');
   }
 
-  ePressed = fPressed = false;
-
-  const lerp = 1 - Math.pow(0.01, dt);
-  cam.x += (player.x - cam.x) * lerp;
-  cam.y += (player.y - cam.y) * lerp;
+  ePressed=fPressed=false;
+  const lerp=1-Math.pow(0.01,dt);
+  cam.x+=(player.x-cam.x)*lerp; cam.y+=(player.y-cam.y)*lerp;
 }
 
 // ─── Draw ────────────────────────────────────────────────────────────────────
 function draw() {
-  const W = canvas.width, H = canvas.height;
-  ctx.clearRect(0, 0, W, H);
-  const offX = Math.round(W/2 - cam.x);
-  const offY = Math.round(H/2 - cam.y);
-  ctx.save();
-  ctx.translate(offX, offY);
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  const offX=Math.round(W/2-cam.x), offY=Math.round(H/2-cam.y);
+  ctx.save(); ctx.translate(offX,offY);
 
-  ctx.drawImage(mapCanvas, 0, 0);
-  for (const farm of farms) drawFarm(ctx, farm);
-  for (const house of houses) drawHouseFloor(ctx, house);
+  ctx.drawImage(mapCanvas,0,0);
+  for (const farm of farms) drawFarm(ctx,farm);
+  for (const house of houses) drawHouseFloor(ctx,house);
 
-  // Sort trees + villagers + player by Y for depth
-  const entities = [
-    ...trees.map(t => ({ y: t.y + t.r, draw: () => drawTree(ctx, t) })),
-    ...villagers.map(v => ({ y: v.y + 12, draw: () => drawVillager(ctx, v) })),
-    { y: player.y + 12, draw: () => drawPlayer(ctx, player) },
+  // Active collectibles
+  for (const c of collectibles) {
+    if (c.collected) continue;
+    const q=getQuestForItem(c.itemId);
+    if (!q||q.status!=='active') continue;
+    drawCollectible(ctx,c);
+  }
+
+  // Y-sorted entities
+  const entities=[
+    ...trees.map(t=>({y:t.y+t.r,    draw:()=>drawTree(ctx,t)})),
+    ...villagers.map(v=>({y:v.y+12,  draw:()=>drawVillager(ctx,v)})),
+    {y:player.y+12, draw:()=>drawPlayer(ctx,player)},
   ];
-  entities.sort((a, b) => a.y - b.y);
+  entities.sort((a,b)=>a.y-b.y);
   for (const e of entities) e.draw();
 
-  for (const house of houses) drawHouseWalls(ctx, house);
+  for (const house of houses) drawHouseWalls(ctx,house);
 
-  // Forest fog overlay
-  const forestX = FOREST_C0*TILE, forestY = FOREST_R0*TILE;
-  const forestW  = (FOREST_C1-FOREST_C0+1)*TILE;
-  const forestH  = (FOREST_R1-FOREST_R0+1)*TILE;
-  ctx.fillStyle = 'rgba(0,20,0,0.18)';
-  ctx.fillRect(forestX, forestY, forestW, forestH);
+  ctx.fillStyle='rgba(0,20,0,0.18)';
+  ctx.fillRect(FOREST_C0*TILE,FOREST_R0*TILE,
+    (FOREST_C1-FOREST_C0+1)*TILE,(FOREST_R1-FOREST_R0+1)*TILE);
 
   ctx.restore();
-  drawMinimap(W, H);
+  drawMinimap(W,H);
+
+  // [I] hint in corner
+  ctx.fillStyle='rgba(255,255,255,0.18)';
+  ctx.font='11px sans-serif';
+  ctx.fillText('[I] Inventory / Quests', 14, H-14);
 }
 
 // ─── Loop ────────────────────────────────────────────────────────────────────
-let lastTime = 0;
+let lastTime=0;
 function loop(ts) {
-  const dt = Math.min((ts - lastTime)/1000, 0.1);
-  lastTime = ts;
-  update(dt);
-  draw();
+  const dt=Math.min((ts-lastTime)/1000,0.1);
+  lastTime=ts; update(dt); draw();
   requestAnimationFrame(loop);
 }
-requestAnimationFrame(ts => { lastTime = ts; requestAnimationFrame(loop); });
+requestAnimationFrame(ts=>{lastTime=ts; requestAnimationFrame(loop);});
 </script>
 </body>
 </html>
