@@ -26,9 +26,18 @@
     }
     #hub-btn:hover { border-color: #a8dadc; color: #fff; }
 
+    /* ── Gold display ────────────────────────────────────────────── */
+    #gold-display {
+      position: fixed; top: 14px; right: 14px;
+      background: rgba(13,13,26,0.85); color: #f0c060;
+      border: 1px solid #7a5020; border-radius: 20px;
+      padding: 0.4rem 1rem; font-size: 0.85rem; font-weight: 700;
+      letter-spacing: 1px; z-index: 10; pointer-events: none;
+    }
+
     /* ── Interaction prompt ─────────────────────────────────────── */
     #interact-prompt {
-      position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
       background: rgba(0,0,0,0.75); color: #fff;
       border: 1px solid rgba(255,255,255,0.2); border-radius: 24px;
       padding: 7px 20px; font-size: 0.82rem; letter-spacing: 1.2px;
@@ -50,17 +59,6 @@
     #dialog-name { font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; color: #a8dadc; margin-bottom: 6px; }
     #dialog-text { color: #dde; }
     #dialog-hint { margin-top: 10px; font-size: 0.7rem; color: #445; letter-spacing: 1px; text-transform: uppercase; text-align: right; }
-
-    /* ── Sprint bar ─────────────────────────────────────────────── */
-    #sprint-bar {
-      position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
-      display: flex; align-items: center; gap: 8px; z-index: 10;
-      opacity: 0; transition: opacity 0.3s;
-    }
-    #sprint-bar.show { opacity: 1; }
-    #sprint-label { font-size: 0.65rem; color: #aaa; letter-spacing: 1.5px; text-transform: uppercase; }
-    #sprint-track { width: 100px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
-    #sprint-fill  { height: 100%; width: 100%; background: #5ad; border-radius: 3px; transition: background 0.2s; }
 
     /* ── I-menu overlay ─────────────────────────────────────────── */
     #menu-overlay {
@@ -91,6 +89,7 @@
     .menu-tab:hover { color: #88a; }
     .menu-tab.active { color: #a8dadc; border-bottom-color: #a8dadc; }
     #menu-close-hint { font-size: 0.65rem; color: #334; letter-spacing: 1.5px; text-transform: uppercase; padding-right: 4px; }
+    #menu-gold { font-size: 0.82rem; color: #f0c060; font-weight: 700; padding: 10px 24px; border-bottom: 1px solid #0e1828; }
     #menu-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
 
     /* Quest entries */
@@ -98,14 +97,11 @@
     .quest-entry:last-child { border-bottom: none; margin-bottom: 0; }
     .quest-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
     .quest-title { font-weight: 700; font-size: 0.95rem; color: #e8eaf6; }
-    .quest-badge {
-      font-size: 0.6rem; letter-spacing: 1.5px; text-transform: uppercase;
-      padding: 3px 10px; border-radius: 12px; font-weight: 700;
-    }
-    .badge-inactive  { background: rgba(100,100,120,.2); color: #556; border: 1px solid #223; }
+    .quest-badge { font-size: 0.6rem; letter-spacing: 1.5px; text-transform: uppercase; padding: 3px 10px; border-radius: 12px; font-weight: 700; }
     .badge-active    { background: rgba(90,180,80,.15);  color: #7dc; border: 1px solid rgba(90,180,80,.3); }
     .badge-completed { background: rgba(80,160,220,.15); color: #8cf; border: 1px solid rgba(80,160,220,.3); }
     .quest-desc  { font-size: 0.83rem; color: #778; line-height: 1.5; margin-bottom: 6px; }
+    .quest-reward { font-size: 0.75rem; color: #f0c060; margin-bottom: 4px; }
     .quest-progress { font-size: 0.78rem; color: #aaa; }
     .progress-bar-track { height: 4px; background: #111a2e; border-radius: 2px; margin-top: 6px; overflow: hidden; }
     .progress-bar-fill  { height: 100%; background: #4a9; border-radius: 2px; transition: width 0.4s; }
@@ -114,11 +110,64 @@
     .inv-empty { color: #334; font-size: 0.85rem; text-align: center; padding: 30px 0; letter-spacing: 1px; text-transform: uppercase; }
     .inv-item { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid #111a2e; }
     .inv-item:last-child { border-bottom: none; }
-    .inv-icon { font-size: 1.5rem; }
-    .inv-name { font-size: 0.9rem; color: #ccd; flex: 1; }
+    .inv-icon  { font-size: 1.5rem; }
+    .inv-info  { flex: 1; }
+    .inv-name  { font-size: 0.9rem; color: #ccd; }
+    .inv-tag   { font-size: 0.65rem; color: #556; letter-spacing: 1px; text-transform: uppercase; }
     .inv-count { font-size: 1rem; font-weight: 700; color: #a8dadc; }
 
-    /* Quest notification toast */
+    /* ── Shop overlay ────────────────────────────────────────────── */
+    #shop-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      display: none; align-items: center; justify-content: center;
+      z-index: 50;
+    }
+    #shop-overlay.show { display: flex; }
+    #shop-panel {
+      background: rgba(8,12,26,0.98);
+      border: 1px solid #7a5020; border-radius: 16px;
+      width: min(520px, 94vw); max-height: 78vh;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+    }
+    #shop-top { padding: 14px 20px 0; border-bottom: 1px solid #3a2010; }
+    #shop-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    #shop-title { font-size: 1.05rem; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: #f0c060; }
+    #shop-gold-display { font-size: 0.85rem; color: #f0c060; font-weight: 700; }
+    .shop-tabs { display: flex; }
+    .shop-tab {
+      background: none; border: none; border-bottom: 2px solid transparent;
+      color: #556; padding: 10px 20px; font-size: 0.75rem;
+      font-family: inherit; letter-spacing: 2px; text-transform: uppercase;
+      cursor: pointer; transition: color 0.15s;
+    }
+    .shop-tab:hover { color: #c09050; }
+    .shop-tab.active { color: #f0c060; border-bottom-color: #f0c060; }
+    #shop-body { padding: 14px 20px; overflow-y: auto; flex: 1; }
+    #shop-footer { padding: 8px 20px 12px; border-top: 1px solid #2a1808; text-align: right; }
+    #shop-close-hint { font-size: 0.65rem; color: #334; letter-spacing: 1.5px; text-transform: uppercase; }
+
+    .shop-item { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid #0e1828; }
+    .shop-item:last-child { border-bottom: none; }
+    .shop-item-icon { font-size: 1.5rem; width: 34px; text-align: center; flex-shrink: 0; }
+    .shop-item-info { flex: 1; }
+    .shop-item-name { font-size: 0.9rem; color: #dde; font-weight: 600; }
+    .shop-item-desc { font-size: 0.72rem; color: #556; margin-top: 2px; line-height: 1.4; }
+    .shop-item-locked { font-size: 0.7rem; color: #e06040; margin-top: 2px; }
+    .shop-item-price { font-size: 0.95rem; color: #f0c060; font-weight: 700; min-width: 52px; text-align: right; padding-right: 10px; flex-shrink: 0; }
+    .shop-btn {
+      padding: 5px 14px; border-radius: 12px; border: none; cursor: pointer;
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+      font-family: inherit; transition: filter 0.15s, transform 0.1s; white-space: nowrap; flex-shrink: 0;
+    }
+    .shop-btn:hover:not(:disabled) { filter: brightness(1.2); transform: scale(1.05); }
+    .shop-btn:disabled { opacity: 0.3; cursor: default; }
+    .shop-btn-buy  { background: #3a7a2a; color: #cfe; }
+    .shop-btn-sell { background: #7a5020; color: #fec; }
+    .shop-empty { color: #334; font-size: 0.85rem; text-align: center; padding: 30px 0; letter-spacing: 1px; text-transform: uppercase; }
+
+    /* ── Quest notification toast ────────────────────────────────── */
     #quest-toast {
       position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
       background: rgba(8,12,26,0.95); color: #7dc;
@@ -132,17 +181,13 @@
 </head>
 <body>
 <a id="hub-btn" href="index.html">&#8592; Hub</a>
+<div id="gold-display">Gold: 40g</div>
 <div id="interact-prompt"></div>
 
 <div id="dialog-box">
   <div id="dialog-name"></div>
   <div id="dialog-text"></div>
   <div id="dialog-hint">[F] Continue</div>
-</div>
-
-<div id="sprint-bar">
-  <span id="sprint-label">Stamina</span>
-  <div id="sprint-track"><div id="sprint-fill"></div></div>
 </div>
 
 <!-- I-key menu -->
@@ -155,30 +200,59 @@
       </div>
       <span id="menu-close-hint">[I] Close</span>
     </div>
+    <div id="menu-gold">Gold: 40g</div>
     <div id="menu-body"></div>
   </div>
 </div>
 
-<div id="quest-toast"></div>
+<!-- Shop overlay -->
+<div id="shop-overlay">
+  <div id="shop-panel">
+    <div id="shop-top">
+      <div id="shop-title-row">
+        <span id="shop-title">Market</span>
+        <span id="shop-gold-display">Gold: 40g</span>
+      </div>
+      <div class="shop-tabs">
+        <button class="shop-tab active" data-stab="buy">Buy</button>
+        <button class="shop-tab"        data-stab="sell">Sell</button>
+      </div>
+    </div>
+    <div id="shop-body"></div>
+    <div id="shop-footer">
+      <span id="shop-close-hint">[E] Close Shop</span>
+    </div>
+  </div>
+</div>
 
+<div id="quest-toast"></div>
 <canvas id="canvas"></canvas>
 
 <script>
 // ─── Constants ───────────────────────────────────────────────────────────────
-const TILE          = 32;
-const MAP_COLS      = 80;
-const MAP_ROWS      = 80;
-const PLAYER_R      = 9;
-const PLAYER_SPEED  = 170;
-const SPRINT_SPEED  = 310;
-const STAMINA_MAX   = 1;
-const STAMINA_DRAIN = 1 / 2.2;
-const STAMINA_REGEN = 1 / 4;
-const WALL_T        = 9;
-const DOOR_W        = TILE;
-const INTERACT_DIST = 54;
-const TALK_DIST     = 48;
-const COLLECT_DIST  = 18;
+const TILE           = 32;
+const MAP_COLS       = 80;
+const MAP_ROWS       = 80;
+const PLAYER_R       = 9;
+const PLAYER_SPEED   = 170;
+const SPRINT_SPEED   = 310;
+const WALL_T         = 9;
+const DOOR_W         = TILE;
+const INTERACT_DIST  = 54;
+const TALK_DIST      = 48;
+const COLLECT_DIST   = 18;
+const FARM_INTERACT_DIST = 38;
+const SHOP_INTERACT_DIST = 52;
+const STARTING_GOLD  = 40;
+
+// ─── Shop catalogue ──────────────────────────────────────────────────────────
+const SHOP_CATALOG = [
+  { id:'hoe',        name:'Hoe',              icon:'⛏',  price:15,  qty:1, desc:'Till soil so you can plant seeds.' },
+  { id:'steelHoe',   name:'Steel Hoe',         icon:'⚒',  price:80,  qty:1, desc:'Halves crop grow time. Required for Herb Seedlings.' },
+  { id:'seedCarrot', name:'Carrot Seeds ×3',   icon:'🥕', price:6,   qty:3, desc:'Grows in 25s  ·  Sells for 10g each.' },
+  { id:'seedWheat',  name:'Wheat Seeds ×3',    icon:'🌾', price:10,  qty:3, desc:'Grows in 45s  ·  Sells for 18g each.' },
+  { id:'seedHerb',   name:'Herb Seedlings ×2', icon:'🌱', price:18,  qty:2, desc:'Grows in 80s  ·  Sells for 35g each. Requires Steel Hoe.' },
+];
 
 // ─── Seeded RNG ──────────────────────────────────────────────────────────────
 function mulberry32(seed) {
@@ -304,33 +378,41 @@ function doorCenter(house) { return {x:house.x+house.w/2, y:house.y+house.h}; }
 // ─── Quests ──────────────────────────────────────────────────────────────────
 const quests = {
   lostSheep: {
-    id: 'lostSheep',
-    title: 'Lost Sheep',
-    giver: 'Finn',
-    description: "Finn's 10 sheep have wandered off across the fields. Find them all and bring them back.",
-    itemId: 'sheep',
-    required: 10,
-    status: 'inactive',   // 'inactive' | 'active' | 'completed'
+    id:'lostSheep', title:'Lost Sheep', giver:'Finn',
+    description:"Finn's 10 sheep have wandered off across the fields.",
+    type:'collect', itemId:'sheep', required:10, reward:50, status:'inactive',
   },
   forestHerbs: {
-    id: 'forestHerbs',
-    title: 'Forest Herbs',
-    giver: 'Old Maren',
-    description: 'Collect 5 medicinal herbs from the forest for Old Maren\'s winter remedies.',
-    itemId: 'herb',
-    required: 5,
-    status: 'inactive',
+    id:'forestHerbs', title:'Forest Herbs', giver:'Old Maren',
+    description:'Collect 5 medicinal herbs from the forest for Old Maren.',
+    type:'collect', itemId:'herb', required:5, reward:40, status:'inactive',
+  },
+  greenThumb: {
+    id:'greenThumb', title:'Green Thumb', giver:'Merchant',
+    description:'Harvest 5 crops from your farm plots.',
+    type:'harvest', required:5, progress:0, reward:75, status:'inactive',
   },
 };
 
 // ─── Inventory ───────────────────────────────────────────────────────────────
 const inventory = {
-  sheep: { name: 'Sheep',         icon: '🐑', count: 0 },
-  herb:  { name: 'Medicinal Herb', icon: '🌿', count: 0 },
+  // Quest collectibles
+  sheep:      { name:'Sheep',            icon:'🐑', count:0 },
+  herb:       { name:'Medicinal Herb',   icon:'🌿', count:0 },
+  // Tools
+  hoe:        { name:'Hoe',              icon:'⛏', count:0, type:'tool' },
+  steelHoe:   { name:'Steel Hoe',        icon:'⚒', count:0, type:'tool' },
+  // Seeds
+  seedCarrot: { name:'Carrot Seeds',     icon:'🥕', count:0, type:'seed', growsInto:'carrot',  growTime:25 },
+  seedWheat:  { name:'Wheat Seeds',      icon:'🌾', count:0, type:'seed', growsInto:'wheat',   growTime:45 },
+  seedHerb:   { name:'Herb Seedlings',   icon:'🌱', count:0, type:'seed', growsInto:'herbCrop',growTime:80 },
+  // Crops (sellable)
+  carrot:     { name:'Carrot',   icon:'🥕', count:0, type:'crop', sellPrice:10 },
+  wheat:      { name:'Wheat',    icon:'🌾', count:0, type:'crop', sellPrice:18 },
+  herbCrop:   { name:'Herb',     icon:'🌿', count:0, type:'crop', sellPrice:35 },
 };
 
 // ─── Collectibles ─────────────────────────────────────────────────────────────
-// Sheep near farms; herbs in forest. Only visible/collectable when quest is active.
 const SHEEP_SPOTS = [
   {tx:11,ty:12},{tx:15,ty:11},{tx:18,ty:14},{tx:22,ty:30},
   {tx:24,ty:26},{tx:19,ty:32},{tx:44,ty:18},{tx:46,ty:23},
@@ -352,38 +434,187 @@ function getQuestForItem(itemId) {
 function drawCollectible(ctx2, c) {
   const { x, y, itemId } = c;
   if (itemId === 'sheep') {
-    // Fluffy white sheep
     ctx2.fillStyle = 'rgba(0,0,0,0.15)';
     ctx2.beginPath(); ctx2.ellipse(x+2, y+8, 7, 3, 0, 0, Math.PI*2); ctx2.fill();
-    // Body
     ctx2.fillStyle = '#f0f0ee';
     ctx2.beginPath(); ctx2.arc(x, y, 8, 0, Math.PI*2); ctx2.fill();
     ctx2.fillStyle = '#e0e0dc';
     ctx2.beginPath(); ctx2.arc(x-4, y-2, 5, 0, Math.PI*2); ctx2.fill();
     ctx2.beginPath(); ctx2.arc(x+4, y-2, 5, 0, Math.PI*2); ctx2.fill();
-    // Head
     ctx2.fillStyle = '#d4c8b0';
     ctx2.beginPath(); ctx2.arc(x, y-8, 4, 0, Math.PI*2); ctx2.fill();
-    // Legs
     ctx2.fillStyle = '#b0a898';
-    for (const lx of [x-4, x-1, x+2, x+5]) {
-      ctx2.fillRect(lx, y+5, 2, 5);
-    }
+    for (const lx of [x-4, x-1, x+2, x+5]) ctx2.fillRect(lx, y+5, 2, 5);
   } else {
-    // Herb: green cross + glow
-    ctx2.save();
-    ctx2.globalAlpha = 0.35;
-    ctx2.fillStyle = '#3a8';
-    ctx2.beginPath(); ctx2.arc(x, y, 10, 0, Math.PI*2); ctx2.fill();
-    ctx2.restore();
+    ctx2.save(); ctx2.globalAlpha=0.35; ctx2.fillStyle='#3a8';
+    ctx2.beginPath(); ctx2.arc(x, y, 10, 0, Math.PI*2); ctx2.fill(); ctx2.restore();
     ctx2.fillStyle = '#5cb84a';
-    ctx2.fillRect(x-2, y-7, 4, 14);
-    ctx2.fillRect(x-7, y-2, 14, 4);
+    ctx2.fillRect(x-2, y-7, 4, 14); ctx2.fillRect(x-7, y-2, 14, 4);
     ctx2.fillStyle = '#80e060';
     ctx2.beginPath(); ctx2.arc(x-5, y-5, 3, 0, Math.PI*2); ctx2.fill();
     ctx2.beginPath(); ctx2.arc(x+5, y-5, 3, 0, Math.PI*2); ctx2.fill();
-    ctx2.beginPath(); ctx2.arc(x,   y+5, 3, 0, Math.PI*2); ctx2.fill();
+    ctx2.beginPath(); ctx2.arc(x, y+5, 3, 0, Math.PI*2); ctx2.fill();
   }
+}
+
+// ─── Farm plots ──────────────────────────────────────────────────────────────
+// Eight interactive plots in a 4×2 grid, west of the shop
+const FARM_PLOT_DEFS = [
+  {tx:30,ty:31},{tx:31,ty:31},{tx:32,ty:31},{tx:33,ty:31},
+  {tx:30,ty:32},{tx:31,ty:32},{tx:32,ty:32},{tx:33,ty:32},
+];
+const farmPlots = FARM_PLOT_DEFS.map(d => ({
+  x: d.tx*TILE + TILE/2, y: d.ty*TILE + TILE/2,
+  state: 'idle',   // 'idle' | 'tilled' | 'seeded' | 'grown'
+  cropId: null, plantedAt: 0, growTime: 0,
+}));
+
+function findAvailableSeed() {
+  for (const [k, v] of Object.entries(inventory)) {
+    if (v.type !== 'seed' || !v.count) continue;
+    if (k === 'seedHerb' && !inventory.steelHoe.count) continue;
+    return k;
+  }
+  return null;
+}
+
+function getFarmPrompt(plot) {
+  if (plot.state === 'idle') {
+    if (inventory.hoe.count || inventory.steelHoe.count)
+      return { label:'[E] Till soil', canInteract:true };
+    return { label:'Farm plot — needs Hoe', canInteract:false };
+  }
+  if (plot.state === 'tilled') {
+    const sid = findAvailableSeed();
+    if (sid) return { label:`[E] Plant ${inventory[sid].name}`, canInteract:true };
+    return { label:'Tilled — buy seeds at shop', canInteract:false };
+  }
+  if (plot.state === 'seeded') {
+    const rem = Math.max(0, Math.ceil((plot.plantedAt + plot.growTime - Date.now()) / 1000));
+    return rem > 0
+      ? { label:`Growing… ${rem}s remaining`, canInteract:false }
+      : null; // state will flip to 'grown' in update()
+  }
+  if (plot.state === 'grown') return { label:'[E] Harvest', canInteract:true };
+  return null;
+}
+
+function doFarmAction(plot) {
+  if (plot.state === 'idle') {
+    plot.state = 'tilled';
+    showToast('Soil tilled!');
+  } else if (plot.state === 'tilled') {
+    const sid = findAvailableSeed();
+    if (!sid) return;
+    const seedItem = inventory[sid];
+    const growMs = inventory.steelHoe.count
+      ? seedItem.growTime * 500   // halved with Steel Hoe
+      : seedItem.growTime * 1000;
+    plot.state     = 'seeded';
+    plot.cropId    = seedItem.growsInto;
+    plot.growTime  = growMs;
+    plot.plantedAt = Date.now();
+    inventory[sid].count--;
+    showToast(`Planted: ${seedItem.name}`);
+  } else if (plot.state === 'grown') {
+    const cropId = plot.cropId;
+    inventory[cropId].count++;
+    plot.state = 'idle'; plot.cropId = null; plot.growTime = 0;
+    // Green Thumb quest progress
+    if (quests.greenThumb.status === 'active') {
+      quests.greenThumb.progress++;
+      renderMenu();
+      if (quests.greenThumb.progress >= quests.greenThumb.required)
+        showToast('Return to Merchant to complete: Green Thumb!');
+    }
+    showToast(`Harvested: ${inventory[cropId].name}!`);
+    updateGoldDisplay();
+  }
+}
+
+function drawFarmPlot(ctx2, plot) {
+  const { x, y, state, cropId } = plot;
+  const hw = TILE * 0.44;
+  // Background soil
+  ctx2.fillStyle = state === 'idle' ? '#7a5028' : '#4e3010';
+  ctx2.fillRect(x-hw, y-hw, hw*2, hw*2);
+  // Tilled lines
+  if (state !== 'idle') {
+    ctx2.strokeStyle = '#3a2008'; ctx2.lineWidth = 1;
+    for (let ly = y-hw+5; ly < y+hw-2; ly += 5) {
+      ctx2.beginPath(); ctx2.moveTo(x-hw+2, ly); ctx2.lineTo(x+hw-2, ly); ctx2.stroke();
+    }
+  }
+  // Crop visual
+  if (state === 'seeded') {
+    ctx2.fillStyle = '#3a8830';
+    ctx2.fillRect(x-1, y-5, 2, 5);
+    ctx2.fillStyle = '#50aa40';
+    ctx2.beginPath(); ctx2.ellipse(x-3, y-6, 3, 2, -0.4, 0, Math.PI*2); ctx2.fill();
+    ctx2.beginPath(); ctx2.ellipse(x+3, y-7, 3, 2,  0.4, 0, Math.PI*2); ctx2.fill();
+  } else if (state === 'grown') {
+    const colors = { carrot:'#e87030', wheat:'#e8c040', herbCrop:'#50cc40' };
+    const col = colors[cropId] || '#60aa40';
+    ctx2.fillStyle = '#2a6820';
+    ctx2.fillRect(x-1, y-13, 2, 13);
+    ctx2.fillStyle = col;
+    ctx2.beginPath(); ctx2.moveTo(x, y-16); ctx2.lineTo(x-7, y-8); ctx2.lineTo(x+7, y-8); ctx2.closePath(); ctx2.fill();
+    // Ready-to-harvest glow
+    ctx2.save(); ctx2.globalAlpha=0.25; ctx2.fillStyle='#ffff88';
+    ctx2.beginPath(); ctx2.arc(x, y-11, 10, 0, Math.PI*2); ctx2.fill(); ctx2.restore();
+  }
+  // Border
+  ctx2.strokeStyle = state === 'grown' ? '#a0e060' : '#6b4018';
+  ctx2.lineWidth   = state === 'grown' ? 2 : 1;
+  ctx2.strokeRect(x-hw, y-hw, hw*2, hw*2);
+}
+
+// ─── Shop building ───────────────────────────────────────────────────────────
+const SHOP_DEF = { tx:35, ty:30, tw:4, th:3 };
+
+function drawShopBuilding(ctx2) {
+  const { tx, ty, tw, th } = SHOP_DEF;
+  const x = tx*TILE, y = ty*TILE, w = tw*TILE, h = th*TILE;
+  // Drop shadow
+  ctx2.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx2.fillRect(x+6, y+6, w, h);
+  // Floor
+  ctx2.fillStyle = '#f0e0a0';
+  ctx2.fillRect(x+WALL_T, y+WALL_T, w-WALL_T*2, h-WALL_T*2);
+  // Walls (amber/gold tone)
+  ctx2.fillStyle = '#c8a040';
+  ctx2.fillRect(x, y, w, WALL_T);
+  ctx2.fillRect(x, y, WALL_T, h);
+  ctx2.fillRect(x+w-WALL_T, y, WALL_T, h);
+  const ds = (w - DOOR_W) / 2;
+  ctx2.fillRect(x, y+h-WALL_T, ds, WALL_T);
+  ctx2.fillRect(x+ds+DOOR_W, y+h-WALL_T, ds, WALL_T);
+  // Roof / awning
+  ctx2.fillStyle = '#8b2010';
+  ctx2.beginPath();
+  ctx2.moveTo(x-10, y); ctx2.lineTo(x+w/2, y-TILE*0.9); ctx2.lineTo(x+w+10, y);
+  ctx2.closePath(); ctx2.fill();
+  ctx2.strokeStyle = 'rgba(0,0,0,0.25)'; ctx2.lineWidth=2; ctx2.stroke();
+  // Awning stripe
+  ctx2.fillStyle = '#c83010'; ctx2.strokeStyle='none';
+  for (let i = 0; i < 4; i++) {
+    const ax = x + (i*0.25)*w, ax2 = x + (i*0.25+0.125)*w;
+    ctx2.beginPath();
+    ctx2.moveTo(ax, y); ctx2.lineTo(ax2, y);
+    ctx2.lineTo(x+w/2, y-TILE*0.9); ctx2.closePath(); ctx2.fill();
+  }
+  // Sign board
+  ctx2.fillStyle = '#f0e060';
+  ctx2.beginPath(); ctx2.roundRect(x+w/2-28, y-TILE*0.5, 56, 19, 4); ctx2.fill();
+  ctx2.strokeStyle='#a07010'; ctx2.lineWidth=1; ctx2.stroke();
+  ctx2.fillStyle = '#5a3010'; ctx2.font='bold 9px sans-serif'; ctx2.textAlign='center';
+  ctx2.fillText('MARKET', x+w/2, y-TILE*0.5+13); ctx2.textAlign='left';
+  // Windows
+  ctx2.fillStyle = '#b8d8f0';
+  ctx2.fillRect(x+WALL_T+5, y+TILE*0.55, TILE*0.38, TILE*0.38);
+  ctx2.fillRect(x+w-WALL_T-5-TILE*0.38, y+TILE*0.55, TILE*0.38, TILE*0.38);
+  ctx2.strokeStyle='rgba(0,0,0,0.3)'; ctx2.lineWidth=1;
+  ctx2.strokeRect(x, y, w, h);
 }
 
 // ─── Villagers ───────────────────────────────────────────────────────────────
@@ -392,90 +623,57 @@ const VILLAGER_DEFS = [
     lines:['These lands have been peaceful for many years.',
            'The forest to the north grows darker each season though.',
            'Best not to venture too deep without a torch.'],
-    completedLines:['My remedies are made and the village is well.',
+    completedLines:['My remedies are ready and the village is well.',
                     'The forest is dangerous. You were very brave to go in.'] },
-  { name:'Finn',       skinColor:'#e8b88a', questId:'lostSheep',
+  { name:'Finn',      skinColor:'#e8b88a', questId:'lostSheep',
     lines:['Lovely day, is it not?', 'The farm keeps me busy but I would not trade it.'],
-    completedLines:['My sheep are all safe and sound, thanks to you!',
+    completedLines:['My sheep are all safe, thanks to you!',
                     'You are welcome here any time.'] },
-  { name:'Brix',       skinColor:'#c07850', questId:null,
+  { name:'Brix',      skinColor:'#c07850', questId:null,
     lines:['I built most of these houses myself, you know.',
            'Good solid wood from the forest. Though I do not go there alone.',
            'Strange sounds at night...'] },
-  { name:'Lena',       skinColor:'#f0c8a0', questId:null,
+  { name:'Lena',      skinColor:'#f0c8a0', questId:null,
     lines:['The berries are ripe near the forest edge.',
            'Just mind the roots — they trip you up something awful.',
            'Welcome to our little village!'] },
-  { name:'Corin',      skinColor:'#a06040', questId:null,
+  { name:'Corin',     skinColor:'#a06040', questId:null,
     lines:['I heard something big moving in the trees last night.',
            'Probably just a deer. Probably.',
            'Anyway, nice weather we are having.'] },
-  { name:'Aldric',     skinColor:'#c8905a', questId:null,
+  { name:'Aldric',    skinColor:'#c8905a', questId:null,
     lines:['Quiet day today. Good for thinking.',
            'I keep my boots by the door. Always ready to walk.',
            'Not that anywhere exciting is nearby... yet.'] },
+  // Merchant — stands in front of the shop
+  { name:'Merchant', skinColor:'#d4a070', bodyColor:'#c08820', bodyDark:'#a07010',
+    questId:'greenThumb', isShopkeeper:true,
+    lines:['Welcome! Finest goods in the land.',
+           'Buy seeds, grow crops, and sell them back for profit.',
+           'The more you farm, the richer you become!'],
+    completedLines:["You've got a real talent for farming!",
+                    'Come back anytime — my shelves are always stocked.'] },
 ];
 
 const villagers = VILLAGER_DEFS.map((d, i) => {
-  const house = houses[i];
-  return {
-    x: house.x + house.w/2,
-    y: house.y + house.h + 24,
-    name: d.name, skinColor: d.skinColor,
-    questId: d.questId,
-    lines: d.lines,
-    completedLines: d.completedLines || d.lines,
+  let x, y;
+  if (d.isShopkeeper) {
+    x = SHOP_DEF.tx*TILE + SHOP_DEF.tw*TILE/2;
+    y = SHOP_DEF.ty*TILE + SHOP_DEF.th*TILE + 22;
+  } else {
+    const house = houses[i];
+    x = house.x + house.w/2;
+    y = house.y + house.h + 24;
+  }
+  return { x, y,
+    name:d.name, skinColor:d.skinColor,
+    bodyColor:d.bodyColor||null, bodyDark:d.bodyDark||null,
+    questId:d.questId||null, isShopkeeper:d.isShopkeeper||false,
+    lines:d.lines, completedLines:d.completedLines||d.lines,
   };
 });
 
-function buildDialogForVillager(v) {
-  // Returns { lines, hint, onComplete }
-  if (!v.questId) return { lines:[...v.lines], hint:'[F] Continue', onComplete:null };
-  const q = quests[v.questId];
-  const inv = inventory[q.itemId];
-
-  if (q.status === 'inactive') {
-    const offerLines = v.questId === 'lostSheep'
-      ? ['Oh, thank goodness someone stopped by!',
-         'My 10 sheep have wandered off across the fields.',
-         'Would you find them and bring them back?']
-      : ['My old bones ache something fierce this season.',
-         'I need five healing herbs from the forest, but I dare not go myself.',
-         'Would you fetch them for me? They glow faintly among the roots.'];
-    return {
-      lines: offerLines,
-      hint: '[F] Accept Quest',
-      onComplete: () => { q.status = 'active'; showToast('Quest started: ' + q.title); renderMenu(); },
-    };
-  }
-
-  if (q.status === 'active') {
-    if (inv.count >= q.required) {
-      const turnInLines = v.questId === 'lostSheep'
-        ? ['You found all 10 of my sheep!', 'Thank you so very much — I was so worried!', 'Please take this as thanks.']
-        : ['Bless you, child. All five herbs!', 'These will keep the whole village healthy through winter.', 'Here — a small token of my gratitude.'];
-      return {
-        lines: turnInLines,
-        hint: '[F] Complete Quest',
-        onComplete: () => {
-          q.status = 'completed';
-          inv.count -= q.required;
-          showToast('Quest completed: ' + q.title);
-          renderMenu();
-        },
-      };
-    }
-    const progressLines = v.questId === 'lostSheep'
-      ? ['Any sign of my sheep?', `You have ${inv.count} of ${q.required} so far. Keep looking!`]
-      : ['Have you found the herbs yet?', `You have ${inv.count} of ${q.required} needed. They are in the forest.`];
-    return { lines: progressLines, hint: '[F] Continue', onComplete: null };
-  }
-
-  // completed
-  return { lines:[...v.completedLines], hint:'[F] Continue', onComplete:null };
-}
-
-// ─── Farms ───────────────────────────────────────────────────────────────────
+// ─── Decorative farms ────────────────────────────────────────────────────────
 const FARM_DEFS = [
   {tx:13,ty:8},{tx:20,ty:28},{tx:42,ty:20},{tx:28,ty:46},{tx:55,ty:30},
 ];
@@ -557,13 +755,15 @@ function drawHouseWalls(ctx2, house) {
 
 // ─── Villager drawing ────────────────────────────────────────────────────────
 function drawVillager(ctx2, v) {
-  const {x,y}=v;
+  const {x,y} = v;
+  const bodyColor = v.bodyColor || '#4488cc';
+  const bodyDark  = v.bodyDark  || '#4466aa';
   ctx2.save(); ctx2.globalAlpha=0.2; ctx2.fillStyle='#000';
   ctx2.beginPath(); ctx2.ellipse(x,y+11,8,3,0,0,Math.PI*2); ctx2.fill(); ctx2.restore();
-  ctx2.strokeStyle='#4466aa'; ctx2.lineWidth=4; ctx2.lineCap='round';
+  ctx2.strokeStyle=bodyDark; ctx2.lineWidth=4; ctx2.lineCap='round';
   ctx2.beginPath(); ctx2.moveTo(x-3,y+3); ctx2.lineTo(x-3,y+11); ctx2.stroke();
   ctx2.beginPath(); ctx2.moveTo(x+3,y+3); ctx2.lineTo(x+3,y+11); ctx2.stroke();
-  ctx2.fillStyle='#4488cc';
+  ctx2.fillStyle=bodyColor;
   ctx2.beginPath(); ctx2.roundRect(x-6,y-8,12,12,3); ctx2.fill();
   ctx2.strokeStyle=v.skinColor; ctx2.lineWidth=3; ctx2.lineCap='round';
   ctx2.beginPath(); ctx2.moveTo(x-6,y-6); ctx2.lineTo(x-10,y+1); ctx2.stroke();
@@ -575,20 +775,22 @@ function drawVillager(ctx2, v) {
   ctx2.beginPath(); ctx2.arc(x-2.5,y-14,1.2,0,Math.PI*2); ctx2.fill();
   ctx2.beginPath(); ctx2.arc(x+2.5,y-14,1.2,0,Math.PI*2); ctx2.fill();
 
-  // Quest indicator bubble
+  // Quest / shop indicator
   if (v.questId) {
     const q = quests[v.questId];
+    const have = q.type==='harvest' ? (q.progress||0) : (inventory[q.itemId]||{count:0}).count;
     if (q.status === 'inactive') {
-      ctx2.fillStyle='#f0c040';
-      ctx2.font='bold 12px sans-serif'; ctx2.textAlign='center';
-      ctx2.fillText('!', x, y-26);
-      ctx2.textAlign='left';
-    } else if (q.status === 'active' && inventory[q.itemId].count >= q.required) {
-      ctx2.fillStyle='#4ddd88';
-      ctx2.font='bold 11px sans-serif'; ctx2.textAlign='center';
-      ctx2.fillText('?', x, y-26);
-      ctx2.textAlign='left';
+      ctx2.fillStyle='#f0c040'; ctx2.font='bold 12px sans-serif'; ctx2.textAlign='center';
+      ctx2.fillText('!', x, y-26); ctx2.textAlign='left';
+    } else if (q.status === 'active' && have >= q.required) {
+      ctx2.fillStyle='#4ddd88'; ctx2.font='bold 11px sans-serif'; ctx2.textAlign='center';
+      ctx2.fillText('?', x, y-26); ctx2.textAlign='left';
     }
+  }
+  // Shop icon above merchant
+  if (v.isShopkeeper) {
+    ctx2.font='12px sans-serif'; ctx2.textAlign='center';
+    ctx2.fillText('🛒', x, y - (v.questId ? 34 : 26)); ctx2.textAlign='left';
   }
 
   ctx2.font='9px sans-serif';
@@ -599,11 +801,92 @@ function drawVillager(ctx2, v) {
   ctx2.fillText(v.name,x,y-18); ctx2.textAlign='left';
 }
 
+// ─── Dialog helpers ──────────────────────────────────────────────────────────
+function buildDialogForVillager(v) {
+  if (!v.questId) return { lines:[...v.lines], hint:'[F] Continue', onComplete:null };
+  const q = quests[v.questId];
+  const have = q.type==='harvest'
+    ? (q.progress||0)
+    : (inventory[q.itemId]||{count:0}).count;
+
+  if (q.status === 'inactive') {
+    let offerLines;
+    if (q.id === 'lostSheep') offerLines = [
+      'Oh, thank goodness someone stopped by!',
+      'My 10 sheep have wandered off across the fields.',
+      `Would you find them and bring them back? I will pay ${q.reward}g!`,
+    ];
+    else if (q.id === 'forestHerbs') offerLines = [
+      'My old bones ache something fierce this season.',
+      'I need five healing herbs from the forest, but I dare not go myself.',
+      `Would you fetch them for me? Worth ${q.reward}g.`,
+    ];
+    else offerLines = [
+      "I see you're new to farming, friend.",
+      'Till a plot, plant some seeds, and harvest the crops.',
+      `Bring me proof of 5 harvests and I'll pay you ${q.reward}g.`,
+    ];
+    return {
+      lines: offerLines, hint: '[F] Accept Quest',
+      onComplete: () => { q.status = 'active'; showToast('Quest started: ' + q.title); renderMenu(); },
+    };
+  }
+
+  if (q.status === 'active') {
+    if (have >= q.required) {
+      let turnInLines;
+      if (q.id === 'lostSheep') turnInLines = [
+        'You found all 10 of my sheep!',
+        'Thank you so very much — I was so worried!',
+        `Here is your ${q.reward}g reward.`,
+      ];
+      else if (q.id === 'forestHerbs') turnInLines = [
+        'Bless you, child. All five herbs!',
+        'These will keep the whole village healthy through winter.',
+        `Here — ${q.reward}g as promised.`,
+      ];
+      else turnInLines = [
+        'Five harvests — impressive!',
+        `Here is your ${q.reward}g as promised. Happy farming!`,
+      ];
+      return {
+        lines: turnInLines, hint: '[F] Complete Quest',
+        onComplete: () => {
+          q.status = 'completed';
+          if (q.type !== 'harvest') inventory[q.itemId].count -= q.required;
+          player.gold += q.reward;
+          updateGoldDisplay();
+          showToast(`Quest complete! +${q.reward}g`);
+          renderMenu();
+        },
+      };
+    }
+    let progressLines;
+    if (q.id === 'lostSheep') progressLines = [
+      'Any sign of my sheep?',
+      `You have ${have} of ${q.required} so far. Keep looking!`,
+    ];
+    else if (q.id === 'forestHerbs') progressLines = [
+      'Have you found the herbs yet?',
+      `You have ${have} of ${q.required} needed. They are in the forest.`,
+    ];
+    else progressLines = [
+      "How's the farming going?",
+      `You've harvested ${have} of ${q.required} crops. Keep at it!`,
+    ];
+    return { lines: progressLines, hint: '[F] Continue', onComplete: null };
+  }
+
+  return { lines:[...v.completedLines], hint:'[F] Continue', onComplete:null };
+}
+
 // ─── Player ──────────────────────────────────────────────────────────────────
 const player = {
-  x:(MAP_COLS/2)*TILE, y:(MAP_ROWS/2)*TILE,
-  stamina:STAMINA_MAX, sprinting:false, walkCycle:0,
+  x: (MAP_COLS/2)*TILE, y: (MAP_ROWS/2)*TILE,
+  gold: STARTING_GOLD,
+  sprinting: false, walkCycle: 0,
 };
+
 function drawPlayer(ctx2, p) {
   const {x,y,walkCycle,sprinting}=p;
   const moving=keys['w']||keys['s']||keys['a']||keys['d']||
@@ -650,7 +933,7 @@ window.addEventListener('keydown', e => {
   if (k==='e') ePressed=true;
   if (k==='f') fPressed=true;
   if (k==='i') iPressed=true;
-  if (k==='escape') closeMenu();
+  if (k==='escape') { closeMenu(); closeShop(); }
   e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()]=false; });
@@ -684,20 +967,20 @@ function advanceDialog() {
   dialogHint.textContent = isLast ? dialogFinalHint : '[F] Continue';
 }
 function closeDialog() {
-  dialogBox.classList.remove('show');
-  dialogVillager=null;
+  dialogBox.classList.remove('show'); dialogVillager=null;
 }
 
-// ─── Menu ────────────────────────────────────────────────────────────────────
+// ─── I-key menu ──────────────────────────────────────────────────────────────
 let menuOpen=false, menuTab='quests';
 const menuOverlay = document.getElementById('menu-overlay');
 const menuBody    = document.getElementById('menu-body');
 const menuTabBtns = document.querySelectorAll('.menu-tab');
+const menuGoldEl  = document.getElementById('menu-gold');
 
 menuTabBtns.forEach(btn => {
   btn.addEventListener('click', () => {
-    menuTab = btn.dataset.tab;
-    menuTabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab===menuTab));
+    menuTab=btn.dataset.tab;
+    menuTabBtns.forEach(b=>b.classList.toggle('active',b.dataset.tab===menuTab));
     renderMenuBody();
   });
 });
@@ -707,54 +990,156 @@ function closeMenu() { menuOpen=false; menuOverlay.classList.remove('show'); }
 function toggleMenu(){ menuOpen ? closeMenu() : openMenu(); }
 
 function renderMenu() {
-  menuTabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab===menuTab));
+  menuGoldEl.textContent = `Gold: ${player.gold}g`;
+  menuTabBtns.forEach(b=>b.classList.toggle('active',b.dataset.tab===menuTab));
   renderMenuBody();
 }
 function renderMenuBody() {
-  if (menuTab==='quests') renderQuestsTab();
-  else renderInventoryTab();
+  if (menuTab==='quests') renderQuestsTab(); else renderInventoryTab();
 }
-
 function renderQuestsTab() {
-  const qs = Object.values(quests);
-  if (qs.every(q=>q.status==='inactive')) {
-    menuBody.innerHTML='<div class="inv-empty">No quests yet — talk to villagers!</div>';
-    return;
+  const active = Object.values(quests).filter(q=>q.status!=='inactive');
+  if (!active.length) {
+    menuBody.innerHTML='<div class="inv-empty">No quests yet — talk to villagers!</div>'; return;
   }
-  menuBody.innerHTML = qs.filter(q=>q.status!=='inactive').map(q => {
-    const inv = inventory[q.itemId];
-    const have = Math.min(inv.count, q.required);
+  menuBody.innerHTML = active.map(q => {
+    const have = q.type==='harvest'
+      ? Math.min(q.progress||0, q.required)
+      : Math.min((inventory[q.itemId]||{count:0}).count, q.required);
     const pct  = Math.round((have/q.required)*100);
+    const itemLabel = q.type==='harvest' ? 'crops harvested'
+      : (inventory[q.itemId]||{name:'items'}).name+'s collected';
     const badgeClass = q.status==='completed' ? 'badge-completed' : 'badge-active';
     const badgeText  = q.status==='completed' ? 'Completed' : 'Active';
-    const progressHtml = q.status==='active' ? `
-      <div class="quest-progress">${have} / ${q.required} ${inv.name}s collected</div>
-      <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
-    ` : `<div class="quest-progress" style="color:#4a9">All items returned ✓</div>`;
+    const progressHtml = q.status==='active'
+      ? `<div class="quest-progress">${have} / ${q.required} ${itemLabel}</div>
+         <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${pct}%"></div></div>`
+      : `<div class="quest-progress" style="color:#4a9">All done ✓</div>`;
     return `<div class="quest-entry">
       <div class="quest-header">
         <span class="quest-title">${q.title}</span>
         <span class="quest-badge ${badgeClass}">${badgeText}</span>
       </div>
       <div class="quest-desc">${q.description}</div>
+      <div class="quest-reward">Reward: ${q.reward}g</div>
       ${progressHtml}
     </div>`;
   }).join('');
 }
-
 function renderInventoryTab() {
-  const items = Object.values(inventory).filter(i=>i.count>0);
+  const items = Object.entries(inventory).filter(([,v])=>v.count>0).map(([k,v])=>({...v,key:k}));
   if (!items.length) {
-    menuBody.innerHTML='<div class="inv-empty">Your inventory is empty</div>';
-    return;
+    menuBody.innerHTML='<div class="inv-empty">Your inventory is empty</div>'; return;
   }
-  menuBody.innerHTML = items.map(item => `
+  menuBody.innerHTML = items.map(item=>`
     <div class="inv-item">
       <span class="inv-icon">${item.icon}</span>
-      <span class="inv-name">${item.name}</span>
+      <div class="inv-info">
+        <div class="inv-name">${item.name}</div>
+        ${item.type ? `<div class="inv-tag">${item.type}${item.sellPrice?' · sell '+item.sellPrice+'g each':''}</div>` : ''}
+      </div>
       <span class="inv-count">×${item.count}</span>
-    </div>
-  `).join('');
+    </div>`).join('');
+}
+
+// ─── Shop UI ─────────────────────────────────────────────────────────────────
+let shopOpen=false, shopTab='buy';
+const shopOverlay  = document.getElementById('shop-overlay');
+const shopBody     = document.getElementById('shop-body');
+const shopGoldDisp = document.getElementById('shop-gold-display');
+const goldDisplayEl= document.getElementById('gold-display');
+const shopTabBtns  = document.querySelectorAll('.shop-tab');
+
+shopTabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    shopTab=btn.dataset.stab;
+    shopTabBtns.forEach(b=>b.classList.toggle('active',b.dataset.stab===shopTab));
+    renderShopBody();
+  });
+});
+
+function openShop()  {
+  shopOpen=true;
+  closeMenu();
+  shopTab='buy';
+  shopTabBtns.forEach(b=>b.classList.toggle('active',b.dataset.stab==='buy'));
+  shopOverlay.classList.add('show');
+  renderShopBody();
+}
+function closeShop() { shopOpen=false; shopOverlay.classList.remove('show'); }
+
+function updateGoldDisplay() {
+  goldDisplayEl.textContent = `Gold: ${player.gold}g`;
+  shopGoldDisp.textContent  = `Gold: ${player.gold}g`;
+  if (menuOpen) menuGoldEl.textContent = `Gold: ${player.gold}g`;
+}
+
+function renderShopBody() {
+  updateGoldDisplay();
+  if (shopTab === 'buy') {
+    shopBody.innerHTML = SHOP_CATALOG.map(item => {
+      const canAfford   = player.gold >= item.price;
+      const needsSteel  = item.id === 'seedHerb' && !inventory.steelHoe.count;
+      const alreadyHas  = item.type === 'tool' && inventory[item.id] && inventory[item.id].count > 0;
+      const locked      = needsSteel;
+      const disabled    = !canAfford || locked || alreadyHas;
+      const lockedNote  = locked ? '<div class="shop-item-locked">Requires Steel Hoe</div>' : '';
+      const ownedNote   = alreadyHas ? '<div class="shop-item-locked" style="color:#8cf">Already owned</div>' : '';
+      return `<div class="shop-item">
+        <span class="shop-item-icon">${item.icon}</span>
+        <div class="shop-item-info">
+          <div class="shop-item-name">${item.name}</div>
+          <div class="shop-item-desc">${item.desc}</div>
+          ${lockedNote}${ownedNote}
+        </div>
+        <span class="shop-item-price">${item.price}g</span>
+        <button class="shop-btn shop-btn-buy" onclick="buyItem('${item.id}')" ${disabled?'disabled':''}>Buy</button>
+      </div>`;
+    }).join('');
+  } else {
+    const sellable = Object.entries(inventory)
+      .filter(([,v])=>v.sellPrice && v.count>0)
+      .map(([k,v])=>({...v,key:k}));
+    if (!sellable.length) {
+      shopBody.innerHTML = '<div class="shop-empty">Nothing to sell yet — harvest some crops!</div>';
+    } else {
+      shopBody.innerHTML = sellable.map(item=>`
+        <div class="shop-item">
+          <span class="shop-item-icon">${item.icon}</span>
+          <div class="shop-item-info">
+            <div class="shop-item-name">${item.name}</div>
+            <div class="shop-item-desc">×${item.count} in inventory &nbsp;·&nbsp; ${item.sellPrice}g each</div>
+          </div>
+          <span class="shop-item-price">${item.count * item.sellPrice}g</span>
+          <button class="shop-btn shop-btn-sell" onclick="sellItem('${item.key}')">Sell All</button>
+        </div>`).join('');
+    }
+  }
+}
+
+function buyItem(itemId) {
+  const cat = SHOP_CATALOG.find(i=>i.id===itemId);
+  if (!cat || player.gold < cat.price) return;
+  if (itemId === 'seedHerb' && !inventory.steelHoe.count) { showToast('Steel Hoe required!'); return; }
+  const tool = cat.id === 'hoe' || cat.id === 'steelHoe';
+  if (tool && inventory[itemId].count > 0) return;
+  player.gold -= cat.price;
+  inventory[itemId].count += (cat.qty || 1);
+  updateGoldDisplay();
+  renderShopBody();
+  showToast(`Bought: ${cat.name}`);
+}
+
+function sellItem(itemId) {
+  const item = inventory[itemId];
+  if (!item || !item.count || !item.sellPrice) return;
+  const earned = item.count * item.sellPrice;
+  player.gold += earned;
+  item.count = 0;
+  updateGoldDisplay();
+  renderShopBody();
+  renderMenu();
+  showToast(`Sold! +${earned}g`);
 }
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
@@ -769,13 +1154,8 @@ function showToast(msg) {
 // ─── Camera ──────────────────────────────────────────────────────────────────
 const cam={x:player.x, y:player.y};
 
-// ─── Sprint HUD ──────────────────────────────────────────────────────────────
-const sprintBar  = document.getElementById('sprint-bar');
-const sprintFill = document.getElementById('sprint-fill');
-const promptEl   = document.getElementById('interact-prompt');
-
 // ─── Minimap ─────────────────────────────────────────────────────────────────
-function drawMinimap(W,H) {
+function drawMinimap(W, H) {
   const mmW=130,mmH=130,mmX=W-mmW-14,mmY=H-mmH-14;
   const sx=mmW/(MAP_COLS*TILE), sy=mmH/(MAP_ROWS*TILE);
   ctx.fillStyle='rgba(0,0,0,0.6)';
@@ -788,6 +1168,12 @@ function drawMinimap(W,H) {
   for (const f of farms) ctx.fillRect(mmX+f.x*sx,mmY+f.y*sy,f.w*sx,f.h*sy);
   ctx.fillStyle='#c9935a';
   for (const h of houses) ctx.fillRect(mmX+h.x*sx,mmY+h.y*sy,h.w*sx,h.h*sy);
+  // Shop on minimap (gold)
+  ctx.fillStyle='#f0c040';
+  ctx.fillRect(mmX+SHOP_DEF.tx*TILE*sx,mmY+SHOP_DEF.ty*TILE*sy,SHOP_DEF.tw*TILE*sx,SHOP_DEF.th*TILE*sy);
+  // Farm plots on minimap
+  ctx.fillStyle='#7a5028';
+  for (const p of farmPlots) ctx.fillRect(mmX+p.x*sx-2,mmY+p.y*sy-2,4,4);
   ctx.fillStyle='#ffdd88';
   for (const v of villagers) { ctx.beginPath(); ctx.arc(mmX+v.x*sx,mmY+v.y*sy,2,0,Math.PI*2); ctx.fill(); }
   ctx.fillStyle='#fff';
@@ -798,17 +1184,27 @@ function drawMinimap(W,H) {
 
 // ─── Update ──────────────────────────────────────────────────────────────────
 function update(dt) {
-  // Toggle menu
-  if (iPressed) { toggleMenu(); iPressed=false; }
+  if (iPressed) {
+    if (shopOpen) closeShop(); else toggleMenu();
+    iPressed=false;
+  }
 
-  if (menuOpen) {
-    ePressed=fPressed=iPressed=false;
+  // Shop blocks all input except closing
+  if (shopOpen) {
+    if (ePressed) closeShop();
+    ePressed=fPressed=false;
     const lerp=1-Math.pow(0.01,dt);
     cam.x+=(player.x-cam.x)*lerp; cam.y+=(player.y-cam.y)*lerp;
     return;
   }
 
-  // Dialog blocks movement
+  if (menuOpen) {
+    ePressed=fPressed=false;
+    const lerp=1-Math.pow(0.01,dt);
+    cam.x+=(player.x-cam.x)*lerp; cam.y+=(player.y-cam.y)*lerp;
+    return;
+  }
+
   if (dialogVillager) {
     if (fPressed) advanceDialog();
     ePressed=fPressed=false;
@@ -817,17 +1213,9 @@ function update(dt) {
     return;
   }
 
-  // Sprint
-  const wantSprint=(keys['shift']||keys['shiftleft']||keys['shiftright'])&&player.stamina>0;
-  player.sprinting=wantSprint;
-  if (wantSprint) player.stamina=Math.max(0,player.stamina-STAMINA_DRAIN*dt);
-  else            player.stamina=Math.min(STAMINA_MAX,player.stamina+STAMINA_REGEN*dt);
-  const speed=player.sprinting?SPRINT_SPEED:PLAYER_SPEED;
-  const pct=player.stamina/STAMINA_MAX;
-  sprintFill.style.width=(pct*100)+'%';
-  sprintFill.style.background=pct<0.25?'#e05030':pct<0.6?'#e0a030':'#5ad';
-  if (player.sprinting||player.stamina<STAMINA_MAX) sprintBar.classList.add('show');
-  else sprintBar.classList.remove('show');
+  // Sprint — unlimited, no stamina
+  player.sprinting = keys['shift']||keys['shiftleft']||keys['shiftright'];
+  const speed = player.sprinting ? SPRINT_SPEED : PLAYER_SPEED;
 
   // Movement
   let dx=0,dy=0;
@@ -848,48 +1236,70 @@ function update(dt) {
   for (const house of houses)
     for (const rect of getHouseWalls(house)) {
       const r=resolveCircleRect(player.x,player.y,rect);
-      if (r) {player.x=r.x; player.y=r.y;}
+      if (r) { player.x=r.x; player.y=r.y; }
     }
   // Tree collision
   for (const t of trees) {
     const minD=PLAYER_R+t.r*0.45;
     const dx2=player.x-t.x, dy2=player.y-t.y, d=Math.sqrt(dx2*dx2+dy2*dy2);
-    if (d<minD&&d>0) {player.x+=(dx2/d)*(minD-d); player.y+=(dy2/d)*(minD-d);}
+    if (d<minD&&d>0) { player.x+=(dx2/d)*(minD-d); player.y+=(dy2/d)*(minD-d); }
   }
 
-  // Collect items (auto, walk-over)
+  // Auto-collect quest items
   for (const c of collectibles) {
     if (c.collected) continue;
     const q=getQuestForItem(c.itemId);
-    if (!q||q.status!=='active') continue; // only active quest items are visible/collectible
-    const d=Math.hypot(player.x-c.x,player.y-c.y);
-    if (d<COLLECT_DIST) {
+    if (!q||q.status!=='active') continue;
+    if (Math.hypot(player.x-c.x,player.y-c.y)<COLLECT_DIST) {
       c.collected=true;
       inventory[c.itemId].count++;
       renderMenu();
     }
   }
 
-  // Nearest interactable
-  let nearDoor=null, nearDoorDist=Infinity;
-  for (const h of houses) {
-    const dc=doorCenter(h), d=Math.hypot(player.x-dc.x,player.y-dc.y);
-    if (d<nearDoorDist){nearDoorDist=d;nearDoor=h;}
-  }
-  let nearVillager=null, nearVillagerDist=Infinity;
-  for (const v of villagers) {
-    const d=Math.hypot(player.x-v.x,player.y-v.y);
-    if (d<nearVillagerDist){nearVillagerDist=d;nearVillager=v;}
+  // Grow check for farm plots
+  const now=Date.now();
+  for (const plot of farmPlots) {
+    if (plot.state==='seeded' && now-plot.plantedAt>=plot.growTime)
+      plot.state='grown';
   }
 
+  // ── Proximity checks ─────────────────────────────────────────
+  let nearVillager=null, nearVillagerDist=Infinity;
+  let nearDoor=null,     nearDoorDist=Infinity;
+  let nearFarm=null,     nearFarmDist=Infinity;
+
+  for (const v of villagers) {
+    const d=Math.hypot(player.x-v.x,player.y-v.y);
+    if (d<nearVillagerDist) { nearVillagerDist=d; nearVillager=v; }
+  }
+  for (const h of houses) {
+    const dc=doorCenter(h), d=Math.hypot(player.x-dc.x,player.y-dc.y);
+    if (d<nearDoorDist) { nearDoorDist=d; nearDoor=h; }
+  }
+  for (const plot of farmPlots) {
+    const d=Math.hypot(player.x-plot.x,player.y-plot.y);
+    if (d<nearFarmDist) { nearFarmDist=d; nearFarm=plot; }
+  }
+
+  const promptEl=document.getElementById('interact-prompt');
+
   if (nearVillagerDist<TALK_DIST) {
-    const q=nearVillager.questId?quests[nearVillager.questId]:null;
-    const inv=q?inventory[q.itemId]:null;
-    let label='[F] Talk to '+nearVillager.name;
-    if (q&&q.status==='active'&&inv.count>=q.required) label='[F] Turn in: '+q.title;
-    else if (q&&q.status==='inactive')                  label='[F] Quest: '+nearVillager.name;
+    const q = nearVillager.questId ? quests[nearVillager.questId] : null;
+    const have = q ? (q.type==='harvest'?(q.progress||0):(inventory[q.itemId]||{count:0}).count) : 0;
+    let label = `[F] Talk to ${nearVillager.name}`;
+    if (nearVillager.isShopkeeper) label += '   [E] Open Shop';
+    if (q && q.status==='inactive')                   label = `[F] Quest: ${nearVillager.name}` + (nearVillager.isShopkeeper?'   [E] Open Shop':'');
+    else if (q && q.status==='active' && have>=q.required) label = `[F] Turn in: ${q.title}` + (nearVillager.isShopkeeper?'   [E] Open Shop':'');
     promptEl.textContent=label; promptEl.classList.add('show');
     if (fPressed) openDialog(nearVillager);
+    if (ePressed && nearVillager.isShopkeeper) openShop();
+  } else if (nearFarmDist<FARM_INTERACT_DIST) {
+    const fp=getFarmPrompt(nearFarm);
+    if (fp) {
+      promptEl.textContent=fp.label; promptEl.classList.add('show');
+      if (ePressed && fp.canInteract) doFarmAction(nearFarm);
+    } else promptEl.classList.remove('show');
   } else if (nearDoorDist<INTERACT_DIST) {
     promptEl.textContent=nearDoor.doorOpen?'[E] Close door':'[E] Open door';
     promptEl.classList.add('show');
@@ -912,6 +1322,13 @@ function draw() {
 
   ctx.drawImage(mapCanvas,0,0);
   for (const farm of farms) drawFarm(ctx,farm);
+
+  // Farm plots (ground level, drawn before entities)
+  for (const plot of farmPlots) drawFarmPlot(ctx, plot);
+
+  // Shop building (ground level)
+  drawShopBuilding(ctx);
+
   for (const house of houses) drawHouseFloor(ctx,house);
 
   // Active collectibles
@@ -940,10 +1357,10 @@ function draw() {
   ctx.restore();
   drawMinimap(W,H);
 
-  // [I] hint in corner
+  // Bottom hint
   ctx.fillStyle='rgba(255,255,255,0.18)';
   ctx.font='11px sans-serif';
-  ctx.fillText('[I] Inventory / Quests', 14, H-14);
+  ctx.fillText('[I] Quests & Inventory  ·  Find the Market (NW) to buy seeds & sell crops', 14, H-14);
 }
 
 // ─── Loop ────────────────────────────────────────────────────────────────────
@@ -953,7 +1370,7 @@ function loop(ts) {
   lastTime=ts; update(dt); draw();
   requestAnimationFrame(loop);
 }
-requestAnimationFrame(ts=>{lastTime=ts; requestAnimationFrame(loop);});
+requestAnimationFrame(ts=>{ lastTime=ts; requestAnimationFrame(loop); });
 </script>
 </body>
 </html>
