@@ -241,8 +241,8 @@ const DOOR_W         = TILE;
 const INTERACT_DIST  = 54;
 const TALK_DIST      = 48;
 const COLLECT_DIST   = 18;
-const FARM_INTERACT_DIST = 38;
-const SHOP_INTERACT_DIST = 52;
+const FARM_INTERACT_DIST = 60;
+const SHOP_INTERACT_DIST = 60;
 const STARTING_GOLD  = 40;
 
 // ─── Shop catalogue ──────────────────────────────────────────────────────────
@@ -458,10 +458,10 @@ function drawCollectible(ctx2, c) {
 }
 
 // ─── Farm plots ──────────────────────────────────────────────────────────────
-// Eight interactive plots in a 4×2 grid, west of the shop
+// Eight interactive plots in a 4×2 grid, just NW of player spawn (tile 40,40)
 const FARM_PLOT_DEFS = [
-  {tx:30,ty:31},{tx:31,ty:31},{tx:32,ty:31},{tx:33,ty:31},
-  {tx:30,ty:32},{tx:31,ty:32},{tx:32,ty:32},{tx:33,ty:32},
+  {tx:35,ty:36},{tx:36,ty:36},{tx:37,ty:36},{tx:38,ty:36},
+  {tx:35,ty:37},{tx:36,ty:37},{tx:37,ty:37},{tx:38,ty:37},
 ];
 const farmPlots = FARM_PLOT_DEFS.map(d => ({
   x: d.tx*TILE + TILE/2, y: d.ty*TILE + TILE/2,
@@ -570,7 +570,8 @@ function drawFarmPlot(ctx2, plot) {
 }
 
 // ─── Shop building ───────────────────────────────────────────────────────────
-const SHOP_DEF = { tx:35, ty:30, tw:4, th:3 };
+// Shop just NE of player spawn
+const SHOP_DEF = { tx:41, ty:36, tw:4, th:3 };
 
 function drawShopBuilding(ctx2) {
   const { tx, ty, tw, th } = SHOP_DEF;
@@ -1080,7 +1081,7 @@ function renderShopBody() {
     shopBody.innerHTML = SHOP_CATALOG.map(item => {
       const canAfford   = player.gold >= item.price;
       const needsSteel  = item.id === 'seedHerb' && !inventory.steelHoe.count;
-      const alreadyHas  = item.type === 'tool' && inventory[item.id] && inventory[item.id].count > 0;
+      const alreadyHas  = (item.id === 'hoe' || item.id === 'steelHoe') && inventory[item.id].count > 0;
       const locked      = needsSteel;
       const disabled    = !canAfford || locked || alreadyHas;
       const lockedNote  = locked ? '<div class="shop-item-locked">Requires Steel Hoe</div>' : '';
@@ -1360,7 +1361,7 @@ function draw() {
   // Bottom hint
   ctx.fillStyle='rgba(255,255,255,0.18)';
   ctx.font='11px sans-serif';
-  ctx.fillText('[I] Quests & Inventory  ·  Find the Market (NW) to buy seeds & sell crops', 14, H-14);
+  ctx.fillText('[I] Quests & Inventory  ·  Farm plots (NW) and Market (NE) are near spawn', 14, H-14);
 }
 
 // ─── Loop ────────────────────────────────────────────────────────────────────
