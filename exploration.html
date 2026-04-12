@@ -247,11 +247,15 @@ const STARTING_GOLD  = 40;
 
 // ─── Shop catalogue ──────────────────────────────────────────────────────────
 const SHOP_CATALOG = [
-  { id:'hoe',        name:'Hoe',              icon:'⛏',  price:15,  qty:1, desc:'Till soil so you can plant seeds.' },
-  { id:'steelHoe',   name:'Steel Hoe',         icon:'⚒',  price:80,  qty:1, desc:'Halves crop grow time. Required for Herb Seedlings.' },
-  { id:'seedCarrot', name:'Carrot Seeds ×3',   icon:'🥕', price:6,   qty:3, desc:'Grows in 25s  ·  Sells for 10g each.' },
-  { id:'seedWheat',  name:'Wheat Seeds ×3',    icon:'🌾', price:10,  qty:3, desc:'Grows in 45s  ·  Sells for 18g each.' },
-  { id:'seedHerb',   name:'Herb Seedlings ×2', icon:'🌱', price:18,  qty:2, desc:'Grows in 80s  ·  Sells for 35g each. Requires Steel Hoe.' },
+  { id:'hoe',            name:'Hoe',                 icon:'⛏',  price:15,  qty:1, desc:'Till soil so you can plant seeds.' },
+  { id:'steelHoe',       name:'Steel Hoe',            icon:'⚒',  price:80,  qty:1, desc:'Halves crop grow time. Required for Herb & Golden Seeds.' },
+  { id:'fertilizer',     name:'Fertilizer',           icon:'💧', price:8,   qty:1, desc:'Apply to a seeded plot to finish growing instantly.' },
+  { id:'seedCarrot',     name:'Carrot Seeds ×3',      icon:'🥕', price:6,   qty:3, desc:'Grows in 25s  ·  Sells for 10g each.' },
+  { id:'seedCarrotBulk', name:'Carrot Seeds ×8',      icon:'🥕', price:14,  qty:8, desc:'Bulk pack. Grows in 25s  ·  Sells for 10g each.' },
+  { id:'seedWheat',      name:'Wheat Seeds ×3',       icon:'🌾', price:10,  qty:3, desc:'Grows in 45s  ·  Sells for 18g each.' },
+  { id:'seedWheatBulk',  name:'Wheat Seeds ×8',       icon:'🌾', price:22,  qty:8, desc:'Bulk pack. Grows in 45s  ·  Sells for 18g each.' },
+  { id:'seedHerb',       name:'Herb Seedlings ×2',    icon:'🌱', price:18,  qty:2, desc:'Grows in 80s  ·  Sells for 35g each. Requires Steel Hoe.' },
+  { id:'seedGolden',     name:'Golden Seeds ×1',      icon:'✨', price:45,  qty:1, desc:'Grows in 120s  ·  Sells for 80g. Requires Steel Hoe.' },
 ];
 
 // ─── Seeded RNG ──────────────────────────────────────────────────────────────
@@ -392,6 +396,26 @@ const quests = {
     description:'Harvest 5 crops from your farm plots.',
     type:'harvest', required:5, progress:0, reward:75, status:'inactive',
   },
+  villageTour: {
+    id:'villageTour', title:'Village Tour', giver:'Lena',
+    description:'Get to know the village by talking to 4 different villagers.',
+    type:'talk', required:4, progress:0, reward:30, status:'inactive',
+  },
+  bumperHarvest: {
+    id:'bumperHarvest', title:'Bumper Harvest', giver:'Corin',
+    description:'Harvest 10 crops from your farm plots.',
+    type:'harvest', required:10, progress:0, reward:90, status:'inactive', prerequisite:'greenThumb',
+  },
+  cropTrader: {
+    id:'cropTrader', title:'Crop Trader', giver:'Aldric',
+    description:'Earn 80g by selling crops at the Market.',
+    type:'sell', required:80, progress:0, reward:65, status:'inactive',
+  },
+  richFarmer: {
+    id:'richFarmer', title:'Rich Farmer', giver:'Brix',
+    description:'Accumulate 300g in your pocket.',
+    type:'gold', required:300, reward:100, status:'inactive', prerequisite:'bumperHarvest',
+  },
 };
 
 // ─── Inventory ───────────────────────────────────────────────────────────────
@@ -402,14 +426,18 @@ const inventory = {
   // Tools
   hoe:        { name:'Hoe',              icon:'⛏', count:0, type:'tool' },
   steelHoe:   { name:'Steel Hoe',        icon:'⚒', count:0, type:'tool' },
+  // Tools / consumables
+  fertilizer: { name:'Fertilizer',       icon:'💧', count:0, type:'consumable' },
   // Seeds
-  seedCarrot: { name:'Carrot Seeds',     icon:'🥕', count:0, type:'seed', growsInto:'carrot',  growTime:25 },
-  seedWheat:  { name:'Wheat Seeds',      icon:'🌾', count:0, type:'seed', growsInto:'wheat',   growTime:45 },
-  seedHerb:   { name:'Herb Seedlings',   icon:'🌱', count:0, type:'seed', growsInto:'herbCrop',growTime:80 },
+  seedCarrot: { name:'Carrot Seeds',     icon:'🥕', count:0, type:'seed', growsInto:'carrot',     growTime:25  },
+  seedWheat:  { name:'Wheat Seeds',      icon:'🌾', count:0, type:'seed', growsInto:'wheat',      growTime:45  },
+  seedHerb:   { name:'Herb Seedlings',   icon:'🌱', count:0, type:'seed', growsInto:'herbCrop',   growTime:80  },
+  seedGolden: { name:'Golden Seeds',     icon:'✨', count:0, type:'seed', growsInto:'goldenCrop', growTime:120 },
   // Crops (sellable)
-  carrot:     { name:'Carrot',   icon:'🥕', count:0, type:'crop', sellPrice:10 },
-  wheat:      { name:'Wheat',    icon:'🌾', count:0, type:'crop', sellPrice:18 },
-  herbCrop:   { name:'Herb',     icon:'🌿', count:0, type:'crop', sellPrice:35 },
+  carrot:     { name:'Carrot',      icon:'🥕', count:0, type:'crop', sellPrice:10 },
+  wheat:      { name:'Wheat',       icon:'🌾', count:0, type:'crop', sellPrice:18 },
+  herbCrop:   { name:'Herb',        icon:'🌿', count:0, type:'crop', sellPrice:35 },
+  goldenCrop: { name:'Golden Crop', icon:'⭐', count:0, type:'crop', sellPrice:80 },
 };
 
 // ─── Collectibles ─────────────────────────────────────────────────────────────
@@ -472,7 +500,7 @@ const farmPlots = FARM_PLOT_DEFS.map(d => ({
 function findAvailableSeed() {
   for (const [k, v] of Object.entries(inventory)) {
     if (v.type !== 'seed' || !v.count) continue;
-    if (k === 'seedHerb' && !inventory.steelHoe.count) continue;
+    if ((k === 'seedHerb' || k === 'seedGolden') && !inventory.steelHoe.count) continue;
     return k;
   }
   return null;
@@ -491,9 +519,10 @@ function getFarmPrompt(plot) {
   }
   if (plot.state === 'seeded') {
     const rem = Math.max(0, Math.ceil((plot.plantedAt + plot.growTime - Date.now()) / 1000));
-    return rem > 0
-      ? { label:`Growing… ${rem}s remaining`, canInteract:false }
-      : null; // state will flip to 'grown' in update()
+    if (rem <= 0) return null; // state will flip to 'grown' in update()
+    if (inventory.fertilizer.count > 0)
+      return { label:`[E] Use Fertilizer (${rem}s left)`, canInteract:true };
+    return { label:`Growing… ${rem}s remaining`, canInteract:false };
   }
   if (plot.state === 'grown') return { label:'[E] Harvest', canInteract:true };
   return null;
@@ -516,17 +545,26 @@ function doFarmAction(plot) {
     plot.plantedAt = Date.now();
     inventory[sid].count--;
     showToast(`Planted: ${seedItem.name}`);
+  } else if (plot.state === 'seeded') {
+    // Apply fertilizer — finish growing instantly
+    if (inventory.fertilizer.count > 0) {
+      inventory.fertilizer.count--;
+      plot.plantedAt = Date.now() - plot.growTime; // make it immediately grown
+      showToast('Fertilizer used — crop is ready!');
+    }
   } else if (plot.state === 'grown') {
     const cropId = plot.cropId;
     inventory[cropId].count++;
     plot.state = 'idle'; plot.cropId = null; plot.growTime = 0;
-    // Green Thumb quest progress
-    if (quests.greenThumb.status === 'active') {
-      quests.greenThumb.progress++;
-      renderMenu();
-      if (quests.greenThumb.progress >= quests.greenThumb.required)
-        showToast('Return to Merchant to complete: Green Thumb!');
+    // Update all active harvest quests
+    for (const q of Object.values(quests)) {
+      if (q.type === 'harvest' && q.status === 'active') {
+        q.progress++;
+        if (q.progress >= q.required)
+          showToast(`Return to ${q.giver} to complete: ${q.title}!`);
+      }
     }
+    renderMenu();
     showToast(`Harvested: ${inventory[cropId].name}!`);
     updateGoldDisplay();
   }
@@ -553,7 +591,7 @@ function drawFarmPlot(ctx2, plot) {
     ctx2.beginPath(); ctx2.ellipse(x-3, y-6, 3, 2, -0.4, 0, Math.PI*2); ctx2.fill();
     ctx2.beginPath(); ctx2.ellipse(x+3, y-7, 3, 2,  0.4, 0, Math.PI*2); ctx2.fill();
   } else if (state === 'grown') {
-    const colors = { carrot:'#e87030', wheat:'#e8c040', herbCrop:'#50cc40' };
+    const colors = { carrot:'#e87030', wheat:'#e8c040', herbCrop:'#50cc40', goldenCrop:'#ffd700' };
     const col = colors[cropId] || '#60aa40';
     ctx2.fillStyle = '#2a6820';
     ctx2.fillRect(x-1, y-13, 2, 13);
@@ -630,22 +668,30 @@ const VILLAGER_DEFS = [
     lines:['Lovely day, is it not?', 'The farm keeps me busy but I would not trade it.'],
     completedLines:['My sheep are all safe, thanks to you!',
                     'You are welcome here any time.'] },
-  { name:'Brix',      skinColor:'#c07850', questId:null,
+  { name:'Brix',      skinColor:'#c07850', questId:'richFarmer',
     lines:['I built most of these houses myself, you know.',
            'Good solid wood from the forest. Though I do not go there alone.',
-           'Strange sounds at night...'] },
-  { name:'Lena',      skinColor:'#f0c8a0', questId:null,
+           'Strange sounds at night...'],
+    completedLines:['A rich farmer indeed! The village respects a hard worker.',
+                    'You have earned your place here.'] },
+  { name:'Lena',      skinColor:'#f0c8a0', questId:'villageTour',
     lines:['The berries are ripe near the forest edge.',
            'Just mind the roots — they trip you up something awful.',
-           'Welcome to our little village!'] },
-  { name:'Corin',     skinColor:'#a06040', questId:null,
+           'Welcome to our little village!'],
+    completedLines:["Now you know everyone here. We're a friendly bunch!",
+                    'Pop by anytime if you need anything.'] },
+  { name:'Corin',     skinColor:'#a06040', questId:'bumperHarvest',
     lines:['I heard something big moving in the trees last night.',
            'Probably just a deer. Probably.',
-           'Anyway, nice weather we are having.'] },
-  { name:'Aldric',    skinColor:'#c8905a', questId:null,
+           'Anyway, nice weather we are having.'],
+    completedLines:['Ten harvests! The fields have never looked so good.',
+                    'You are a natural.'] },
+  { name:'Aldric',    skinColor:'#c8905a', questId:'cropTrader',
     lines:['Quiet day today. Good for thinking.',
            'I keep my boots by the door. Always ready to walk.',
-           'Not that anywhere exciting is nearby... yet.'] },
+           'Not that anywhere exciting is nearby... yet.'],
+    completedLines:['You drove a hard bargain at that market!',
+                    'A true crop trader. Well done.'] },
   // Merchant — stands in front of the shop
   { name:'Merchant', skinColor:'#d4a070', bodyColor:'#c08820', bodyDark:'#a07010',
     questId:'greenThumb', isShopkeeper:true,
@@ -779,8 +825,13 @@ function drawVillager(ctx2, v) {
   // Quest / shop indicator
   if (v.questId) {
     const q = quests[v.questId];
-    const have = q.type==='harvest' ? (q.progress||0) : (inventory[q.itemId]||{count:0}).count;
-    if (q.status === 'inactive') {
+    const prereqDone = !q.prerequisite || quests[q.prerequisite].status === 'completed';
+    const have = q.type==='harvest' ? (q.progress||0)
+               : q.type==='talk'    ? (q.progress||0)
+               : q.type==='sell'    ? (q.progress||0)
+               : q.type==='gold'    ? player.gold
+               : (inventory[q.itemId]||{count:0}).count;
+    if (q.status === 'inactive' && prereqDone) {
       ctx2.fillStyle='#f0c040'; ctx2.font='bold 12px sans-serif'; ctx2.textAlign='center';
       ctx2.fillText('!', x, y-26); ctx2.textAlign='left';
     } else if (q.status === 'active' && have >= q.required) {
@@ -806,27 +857,43 @@ function drawVillager(ctx2, v) {
 function buildDialogForVillager(v) {
   if (!v.questId) return { lines:[...v.lines], hint:'[F] Continue', onComplete:null };
   const q = quests[v.questId];
-  const have = q.type==='harvest'
-    ? (q.progress||0)
-    : (inventory[q.itemId]||{count:0}).count;
+
+  // Prerequisite not yet done — show idle chat
+  if (q.prerequisite && quests[q.prerequisite].status !== 'completed')
+    return { lines:[...v.lines], hint:'[F] Continue', onComplete:null };
+
+  // Helper: current progress value
+  function getHave() {
+    if (q.type === 'harvest' || q.type === 'talk' || q.type === 'sell') return q.progress || 0;
+    if (q.type === 'gold') return player.gold;
+    return (inventory[q.itemId] || {count:0}).count;
+  }
 
   if (q.status === 'inactive') {
-    let offerLines;
-    if (q.id === 'lostSheep') offerLines = [
-      'Oh, thank goodness someone stopped by!',
-      'My 10 sheep have wandered off across the fields.',
-      `Would you find them and bring them back? I will pay ${q.reward}g!`,
-    ];
-    else if (q.id === 'forestHerbs') offerLines = [
-      'My old bones ache something fierce this season.',
-      'I need five healing herbs from the forest, but I dare not go myself.',
-      `Would you fetch them for me? Worth ${q.reward}g.`,
-    ];
-    else offerLines = [
-      "I see you're new to farming, friend.",
-      'Till a plot, plant some seeds, and harvest the crops.',
-      `Bring me proof of 5 harvests and I'll pay you ${q.reward}g.`,
-    ];
+    const offerMap = {
+      lostSheep:     ['Oh, thank goodness someone stopped by!',
+                      'My 10 sheep have wandered off across the fields.',
+                      `Would you find them and bring them back? I will pay ${q.reward}g!`],
+      forestHerbs:   ['My old bones ache something fierce this season.',
+                      'I need five healing herbs from the forest, but I dare not go myself.',
+                      `Would you fetch them for me? Worth ${q.reward}g.`],
+      greenThumb:    ["I see you're new to farming, friend.",
+                      'Till a plot, plant some seeds, and harvest the crops.',
+                      `Bring me proof of 5 harvests and I'll pay you ${q.reward}g.`],
+      villageTour:   ['New to the village? Wonderful!',
+                      'You should get to know everyone — we are a friendly bunch.',
+                      `Chat with 4 of us and I'll give you ${q.reward}g.`],
+      bumperHarvest: ['The fields are rich this year — but nobody is working them properly.',
+                      'Think you could manage 10 harvests?',
+                      `Prove it and I will give you ${q.reward}g.`],
+      cropTrader:    ['You know what this village needs? A proper crop trader.',
+                      'Sell 80g worth of crops at the Market.',
+                      `I will reward you ${q.reward}g when you do.`],
+      richFarmer:    ['Gold is the measure of a true farmer, they say.',
+                      'Accumulate 300g and I will believe you have made it.',
+                      `Achieve that and you earn ${q.reward}g from me.`],
+    };
+    const offerLines = offerMap[q.id] || [...v.lines];
     return {
       lines: offerLines, hint: '[F] Accept Quest',
       onComplete: () => { q.status = 'active'; showToast('Quest started: ' + q.title); renderMenu(); },
@@ -834,27 +901,32 @@ function buildDialogForVillager(v) {
   }
 
   if (q.status === 'active') {
+    const have = getHave();
     if (have >= q.required) {
-      let turnInLines;
-      if (q.id === 'lostSheep') turnInLines = [
-        'You found all 10 of my sheep!',
-        'Thank you so very much — I was so worried!',
-        `Here is your ${q.reward}g reward.`,
-      ];
-      else if (q.id === 'forestHerbs') turnInLines = [
-        'Bless you, child. All five herbs!',
-        'These will keep the whole village healthy through winter.',
-        `Here — ${q.reward}g as promised.`,
-      ];
-      else turnInLines = [
-        'Five harvests — impressive!',
-        `Here is your ${q.reward}g as promised. Happy farming!`,
-      ];
+      const turnInMap = {
+        lostSheep:     ['You found all 10 of my sheep!',
+                        'Thank you so very much — I was so worried!',
+                        `Here is your ${q.reward}g reward.`],
+        forestHerbs:   ['Bless you, child. All five herbs!',
+                        'These will keep the whole village healthy through winter.',
+                        `Here — ${q.reward}g as promised.`],
+        greenThumb:    ['Five harvests — impressive!',
+                        `Here is your ${q.reward}g as promised. Happy farming!`],
+        villageTour:   ['You have met everyone! What do you think of our little village?',
+                        `Here is your ${q.reward}g. Welcome to the community!`],
+        bumperHarvest: ['Ten harvests! The fields have never looked so full.',
+                        `Outstanding work — here is your ${q.reward}g.`],
+        cropTrader:    ['I heard you made quite a profit at the Market!',
+                        `A true crop trader. Here is your ${q.reward}g.`],
+        richFarmer:    ['Three hundred gold — I am impressed!',
+                        `You have earned this ${q.reward}g and the respect of the whole village.`],
+      };
+      const turnInLines = turnInMap[q.id] || [`You did it! Here is your ${q.reward}g.`];
       return {
         lines: turnInLines, hint: '[F] Complete Quest',
         onComplete: () => {
           q.status = 'completed';
-          if (q.type !== 'harvest') inventory[q.itemId].count -= q.required;
+          if (q.type === 'collect') inventory[q.itemId].count -= q.required;
           player.gold += q.reward;
           updateGoldDisplay();
           showToast(`Quest complete! +${q.reward}g`);
@@ -862,19 +934,23 @@ function buildDialogForVillager(v) {
         },
       };
     }
-    let progressLines;
-    if (q.id === 'lostSheep') progressLines = [
-      'Any sign of my sheep?',
-      `You have ${have} of ${q.required} so far. Keep looking!`,
-    ];
-    else if (q.id === 'forestHerbs') progressLines = [
-      'Have you found the herbs yet?',
-      `You have ${have} of ${q.required} needed. They are in the forest.`,
-    ];
-    else progressLines = [
-      "How's the farming going?",
-      `You've harvested ${have} of ${q.required} crops. Keep at it!`,
-    ];
+    const progressMap = {
+      lostSheep:     ['Any sign of my sheep?',
+                      `You have ${have} of ${q.required} so far. Keep looking!`],
+      forestHerbs:   ['Have you found the herbs yet?',
+                      `You have ${have} of ${q.required} needed. They are in the forest.`],
+      greenThumb:    ["How's the farming going?",
+                      `You've harvested ${have} of ${q.required} crops. Keep at it!`],
+      villageTour:   ['Have you met everyone yet?',
+                      `You've talked to ${have} of ${q.required} villagers so far.`],
+      bumperHarvest: ['Keep those fields working!',
+                      `${have} of ${q.required} harvests done. Nearly there!`],
+      cropTrader:    ['How is the trading going?',
+                      `You have earned ${have}g of the ${q.required}g needed from crop sales.`],
+      richFarmer:    ['Keep saving that gold!',
+                      `You have ${have}g of the ${q.required}g needed.`],
+    };
+    const progressLines = progressMap[q.id] || ['Keep going!', `${have} of ${q.required} done.`];
     return { lines: progressLines, hint: '[F] Continue', onComplete: null };
   }
 
@@ -940,6 +1016,7 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()]=false; });
 
 // ─── Dialog ──────────────────────────────────────────────────────────────────
+const villageTourVisited = new Set(); // track unique villagers spoken to for villageTour quest
 let dialogVillager=null, dialogLines=[], dialogLineIdx=0;
 let dialogOnComplete=null, dialogFinalHint='[F] Continue';
 const dialogBox  = document.getElementById('dialog-box');
@@ -955,6 +1032,14 @@ function openDialog(v) {
   dialogText.textContent=lines[0];
   dialogHint.textContent = lines.length===1 ? hint : '[F] Continue';
   dialogBox.classList.add('show');
+  // Village Tour quest tracking — count unique villagers spoken to
+  if (quests.villageTour.status === 'active' && !villageTourVisited.has(v.name)) {
+    villageTourVisited.add(v.name);
+    quests.villageTour.progress = villageTourVisited.size;
+    renderMenu();
+    if (quests.villageTour.progress >= quests.villageTour.required)
+      showToast('Return to Lena to complete: Village Tour!');
+  }
 }
 function advanceDialog() {
   if (!dialogVillager) return;
@@ -1004,12 +1089,16 @@ function renderQuestsTab() {
     menuBody.innerHTML='<div class="inv-empty">No quests yet — talk to villagers!</div>'; return;
   }
   menuBody.innerHTML = active.map(q => {
-    const have = q.type==='harvest'
-      ? Math.min(q.progress||0, q.required)
-      : Math.min((inventory[q.itemId]||{count:0}).count, q.required);
-    const pct  = Math.round((have/q.required)*100);
+    let have;
+    if (q.type === 'harvest' || q.type === 'talk' || q.type === 'sell') have = Math.min(q.progress||0, q.required);
+    else if (q.type === 'gold') have = Math.min(player.gold, q.required);
+    else have = Math.min((inventory[q.itemId]||{count:0}).count, q.required);
+    const pct = Math.round((have/q.required)*100);
     const itemLabel = q.type==='harvest' ? 'crops harvested'
-      : (inventory[q.itemId]||{name:'items'}).name+'s collected';
+                    : q.type==='talk'    ? 'villagers met'
+                    : q.type==='sell'    ? `g earned (need ${q.required}g)`
+                    : q.type==='gold'    ? `g saved (need ${q.required}g)`
+                    : (inventory[q.itemId]||{name:'items'}).name+'s collected';
     const badgeClass = q.status==='completed' ? 'badge-completed' : 'badge-active';
     const badgeText  = q.status==='completed' ? 'Completed' : 'Active';
     const progressHtml = q.status==='active'
@@ -1080,7 +1169,7 @@ function renderShopBody() {
   if (shopTab === 'buy') {
     shopBody.innerHTML = SHOP_CATALOG.map(item => {
       const canAfford   = player.gold >= item.price;
-      const needsSteel  = item.id === 'seedHerb' && !inventory.steelHoe.count;
+      const needsSteel  = (item.id === 'seedHerb' || item.id === 'seedGolden') && !inventory.steelHoe.count;
       const alreadyHas  = (item.id === 'hoe' || item.id === 'steelHoe') && inventory[item.id].count > 0;
       const locked      = needsSteel;
       const disabled    = !canAfford || locked || alreadyHas;
@@ -1121,11 +1210,15 @@ function renderShopBody() {
 function buyItem(itemId) {
   const cat = SHOP_CATALOG.find(i=>i.id===itemId);
   if (!cat || player.gold < cat.price) return;
-  if (itemId === 'seedHerb' && !inventory.steelHoe.count) { showToast('Steel Hoe required!'); return; }
+  if ((itemId === 'seedHerb' || itemId === 'seedGolden') && !inventory.steelHoe.count) { showToast('Steel Hoe required!'); return; }
   const tool = cat.id === 'hoe' || cat.id === 'steelHoe';
   if (tool && inventory[itemId].count > 0) return;
   player.gold -= cat.price;
-  inventory[itemId].count += (cat.qty || 1);
+  // Bulk packs map to their base seed inventory slot
+  const invId = itemId === 'seedCarrotBulk' ? 'seedCarrot'
+              : itemId === 'seedWheatBulk'  ? 'seedWheat'
+              : itemId;
+  inventory[invId].count += (cat.qty || 1);
   updateGoldDisplay();
   renderShopBody();
   showToast(`Bought: ${cat.name}`);
@@ -1137,6 +1230,13 @@ function sellItem(itemId) {
   const earned = item.count * item.sellPrice;
   player.gold += earned;
   item.count = 0;
+  // Crop Trader quest progress
+  if (quests.cropTrader.status === 'active') {
+    quests.cropTrader.progress += earned;
+    if (quests.cropTrader.progress >= quests.cropTrader.required)
+      showToast('Return to Aldric to complete: Crop Trader!');
+    renderMenu();
+  }
   updateGoldDisplay();
   renderShopBody();
   renderMenu();
@@ -1287,10 +1387,13 @@ function update(dt) {
 
   if (nearVillagerDist<TALK_DIST) {
     const q = nearVillager.questId ? quests[nearVillager.questId] : null;
-    const have = q ? (q.type==='harvest'?(q.progress||0):(inventory[q.itemId]||{count:0}).count) : 0;
+    const prereqDone = q ? (!q.prerequisite || quests[q.prerequisite].status==='completed') : false;
+    const have = q ? (q.type==='harvest'||q.type==='talk'||q.type==='sell' ? (q.progress||0)
+                     : q.type==='gold' ? player.gold
+                     : (inventory[q.itemId]||{count:0}).count) : 0;
     let label = `[F] Talk to ${nearVillager.name}`;
     if (nearVillager.isShopkeeper) label += '   [E] Open Shop';
-    if (q && q.status==='inactive')                   label = `[F] Quest: ${nearVillager.name}` + (nearVillager.isShopkeeper?'   [E] Open Shop':'');
+    if (q && q.status==='inactive' && prereqDone)     label = `[F] Quest: ${nearVillager.name}` + (nearVillager.isShopkeeper?'   [E] Open Shop':'');
     else if (q && q.status==='active' && have>=q.required) label = `[F] Turn in: ${q.title}` + (nearVillager.isShopkeeper?'   [E] Open Shop':'');
     promptEl.textContent=label; promptEl.classList.add('show');
     if (fPressed) openDialog(nearVillager);
