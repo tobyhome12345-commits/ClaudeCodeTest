@@ -356,7 +356,7 @@ function updateAliens(dt) {
   const ratio    = alive.length / (ALIEN_COLS * ALIEN_ROWS);
   const interval = Math.max(0.045, alienMoveInterval * ratio);
   if (alienMoveTimer < interval) return;
-  alienMoveTimer -= interval;
+  alienMoveTimer = 0;
 
   const step = Math.min(8 + wave * 1.2, 36);
 
@@ -567,9 +567,11 @@ function checkCollisions() {
     }
   }
 
-  // ── aliens erode barriers they overlap ──
+  // ── aliens erode barriers they overlap (skip if above barrier area) ──
+  const barBottom = BAR_Y + BAR_CH * BAR_PW;
   for (const a of aliens) {
     if (!a.alive) continue;
+    if (a.y + A_H < BAR_Y || a.y > barBottom) continue;
     for (const bar of barriers)
       alienErasesBarrier(bar, a.x, a.y, A_W, A_H);
   }
@@ -930,12 +932,16 @@ function draw() {
 }
 
 function loop(ts) {
+  requestAnimationFrame(loop);  // always schedule next frame first
   const dt = Math.min((ts - lastTime) / 1000, 0.05);
   lastTime = ts;
-  update(dt);
-  draw();
+  try {
+    update(dt);
+    draw();
+  } catch(e) {
+    console.error('game error:', e);
+  }
   clearJP();
-  requestAnimationFrame(loop);
 }
 
 // ─────────────────────────────────────────────────────────────
