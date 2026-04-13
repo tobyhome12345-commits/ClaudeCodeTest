@@ -11,6 +11,7 @@
       --red:    #e94560;
       --blue:   #a8dadc;
       --green:  #5a9449;
+      --yellow: #f0c030;
       --dark:   #0d0d1a;
       --mid:    #16213e;
       --panel:  #0f1f3d;
@@ -134,18 +135,20 @@
       transform: translateY(-6px);
       box-shadow: 0 20px 50px rgba(0,0,0,0.5);
     }
-    .game-card.red:hover   { border-color: var(--red);   box-shadow: 0 20px 50px rgba(233,69,96,.22); }
-    .game-card.blue:hover  { border-color: var(--blue);  box-shadow: 0 20px 50px rgba(168,218,220,.18); }
-    .game-card.green:hover { border-color: var(--green); box-shadow: 0 20px 50px rgba(90,148,73,.25); }
+    .game-card.red:hover    { border-color: var(--red);    box-shadow: 0 20px 50px rgba(233,69,96,.22); }
+    .game-card.blue:hover   { border-color: var(--blue);   box-shadow: 0 20px 50px rgba(168,218,220,.18); }
+    .game-card.green:hover  { border-color: var(--green);  box-shadow: 0 20px 50px rgba(90,148,73,.25); }
+    .game-card.yellow:hover { border-color: var(--yellow); box-shadow: 0 20px 50px rgba(240,192,48,.22); }
 
     /* top glow strip */
     .card-glow {
       height: 3px;
       width: 100%;
     }
-    .red   .card-glow { background: linear-gradient(90deg, transparent 10%, var(--red),   transparent 90%); }
-    .blue  .card-glow { background: linear-gradient(90deg, transparent 10%, var(--blue),  transparent 90%); }
-    .green .card-glow { background: linear-gradient(90deg, transparent 10%, var(--green), transparent 90%); }
+    .red    .card-glow { background: linear-gradient(90deg, transparent 10%, var(--red),    transparent 90%); }
+    .blue   .card-glow { background: linear-gradient(90deg, transparent 10%, var(--blue),   transparent 90%); }
+    .green  .card-glow { background: linear-gradient(90deg, transparent 10%, var(--green),  transparent 90%); }
+    .yellow .card-glow { background: linear-gradient(90deg, transparent 10%, var(--yellow), transparent 90%); }
 
     /* preview canvas area */
     .card-preview {
@@ -166,9 +169,10 @@
       filter: drop-shadow(0 0 24px currentColor);
       animation: float 3.5s ease-in-out infinite;
     }
-    .red   .card-icon { color: var(--red); }
-    .blue  .card-icon { color: var(--blue); }
-    .green .card-icon { color: var(--green); }
+    .red    .card-icon { color: var(--red); }
+    .blue   .card-icon { color: var(--blue); }
+    .green  .card-icon { color: var(--green); }
+    .yellow .card-icon { color: var(--yellow); }
 
     @keyframes float {
       0%, 100% { transform: translateY(0);    }
@@ -201,9 +205,10 @@
       text-transform: uppercase;
       font-weight: 700;
     }
-    .red   .card-tag { color: var(--red); }
-    .blue  .card-tag { color: var(--blue); }
-    .green .card-tag { color: var(--green); }
+    .red    .card-tag { color: var(--red); }
+    .blue   .card-tag { color: var(--blue); }
+    .green  .card-tag { color: var(--green); }
+    .yellow .card-tag { color: var(--yellow); }
 
     .card-title {
       font-size: 1.55rem;
@@ -235,6 +240,7 @@
     .red   .pill { background: rgba(233,69,96,.14);  color: var(--red);   border: 1px solid rgba(233,69,96,.3);   }
     .blue  .pill { background: rgba(168,218,220,.1); color: var(--blue);  border: 1px solid rgba(168,218,220,.25); }
     .green .pill { background: rgba(90,148,73,.14);  color: var(--green); border: 1px solid rgba(90,148,73,.3);   }
+    .yellow .pill { background: rgba(240,192,48,.13); color: var(--yellow); border: 1px solid rgba(240,192,48,.3); }
 
     /* play button */
     .card-btn {
@@ -249,9 +255,10 @@
       transition: filter 0.2s, transform 0.15s;
     }
     .card-btn:hover { filter: brightness(1.15); transform: scale(1.03); }
-    .red   .card-btn { background: var(--red);   color: #fff; }
-    .blue  .card-btn { background: var(--blue);  color: var(--dark); }
-    .green .card-btn { background: var(--green); color: #fff; }
+    .red    .card-btn { background: var(--red);    color: #fff; }
+    .blue   .card-btn { background: var(--blue);   color: var(--dark); }
+    .green  .card-btn { background: var(--green);  color: #fff; }
+    .yellow .card-btn { background: var(--yellow); color: var(--dark); }
 
     /* ── Footer ──────────────────────────────────────────────── */
     footer {
@@ -356,6 +363,30 @@
             <span class="pill">Farming system</span>
             <span class="pill">Quests &amp; rewards</span>
             <span class="pill">WASD · Sprint</span>
+          </div>
+          <div class="card-btn">Play Now</div>
+        </div>
+      </a>
+
+      <!-- Flappy Chicken card -->
+      <a class="game-card yellow" href="flappychicken.html">
+        <div class="card-glow"></div>
+        <div class="card-preview">
+          <div class="card-icon">🐔</div>
+        </div>
+        <div class="card-body">
+          <span class="card-tag">Arcade · Endless Runner</span>
+          <h2 class="card-title">Flappy Chicken</h2>
+          <p class="card-desc">
+            A farmyard take on the one-tap classic. Flap your way through an
+            endless gauntlet of wooden fence poles — how far can you go before
+            the feathers fly?
+          </p>
+          <div class="card-features">
+            <span class="pill">One-tap control</span>
+            <span class="pill">Endless</span>
+            <span class="pill">Best score</span>
+            <span class="pill">Click · Space</span>
           </div>
           <div class="card-btn">Play Now</div>
         </div>
