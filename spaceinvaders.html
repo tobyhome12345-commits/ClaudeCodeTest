@@ -7,9 +7,20 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#000; display:flex; justify-content:center; align-items:center; min-height:100vh; }
 canvas { display:block; image-rendering:pixelated; cursor:none; }
+#hub-btn {
+  position: fixed; top: 14px; left: 14px;
+  background: rgba(0,0,0,0.85); color: #00ff88;
+  border: 1px solid #004422; border-radius: 20px;
+  padding: 0.4rem 1rem; font-size: 0.8rem; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  text-decoration: none; z-index: 10;
+  transition: border-color 0.2s, color 0.2s;
+}
+#hub-btn:hover { border-color: #00ff88; color: #fff; }
 </style>
 </head>
 <body>
+<a id="hub-btn" href="index.html">&#8592; Hub</a>
 <canvas id="c"></canvas>
 <script>
 'use strict';
