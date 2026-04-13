@@ -13,6 +13,7 @@
       --green:  #5a9449;
       --yellow: #f0c030;
       --teal:   #00c8a0;
+      --purple: #c084fc;
       --dark:   #0d0d1a;
       --mid:    #16213e;
       --panel:  #0f1f3d;
@@ -141,6 +142,7 @@
     .game-card.green:hover  { border-color: var(--green);  box-shadow: 0 20px 50px rgba(90,148,73,.25); }
     .game-card.yellow:hover { border-color: var(--yellow); box-shadow: 0 20px 50px rgba(240,192,48,.22); }
     .game-card.teal:hover   { border-color: var(--teal);   box-shadow: 0 20px 50px rgba(0,200,160,.22);  }
+    .game-card.purple:hover { border-color: var(--purple); box-shadow: 0 20px 50px rgba(192,132,252,.22); }
 
     /* top glow strip */
     .card-glow {
@@ -152,6 +154,7 @@
     .green  .card-glow { background: linear-gradient(90deg, transparent 10%, var(--green),  transparent 90%); }
     .yellow .card-glow { background: linear-gradient(90deg, transparent 10%, var(--yellow), transparent 90%); }
     .teal   .card-glow { background: linear-gradient(90deg, transparent 10%, var(--teal),   transparent 90%); }
+    .purple .card-glow { background: linear-gradient(90deg, transparent 10%, var(--purple), transparent 90%); }
 
     /* preview canvas area */
     .card-preview {
@@ -177,6 +180,7 @@
     .green  .card-icon { color: var(--green); }
     .yellow .card-icon { color: var(--yellow); }
     .teal   .card-icon { color: var(--teal);   }
+    .purple .card-icon { color: var(--purple); }
 
     @keyframes float {
       0%, 100% { transform: translateY(0);    }
@@ -214,6 +218,7 @@
     .green  .card-tag { color: var(--green); }
     .yellow .card-tag { color: var(--yellow); }
     .teal   .card-tag { color: var(--teal);   }
+    .purple .card-tag { color: var(--purple); }
 
     .card-title {
       font-size: 1.55rem;
@@ -247,6 +252,7 @@
     .green .pill { background: rgba(90,148,73,.14);  color: var(--green); border: 1px solid rgba(90,148,73,.3);   }
     .yellow .pill { background: rgba(240,192,48,.13); color: var(--yellow); border: 1px solid rgba(240,192,48,.3); }
     .teal   .pill { background: rgba(0,200,160,.13);  color: var(--teal);   border: 1px solid rgba(0,200,160,.3);  }
+    .purple .pill { background: rgba(192,132,252,.13); color: var(--purple); border: 1px solid rgba(192,132,252,.3); }
 
     /* play button */
     .card-btn {
@@ -266,6 +272,7 @@
     .green  .card-btn { background: var(--green);  color: #fff; }
     .yellow .card-btn { background: var(--yellow); color: var(--dark); }
     .teal   .card-btn { background: var(--teal);   color: var(--dark); }
+    .purple .card-btn { background: var(--purple); color: var(--dark); }
 
     /* ── Footer ──────────────────────────────────────────────── */
     footer {
@@ -418,6 +425,29 @@
             <span class="pill">Endless</span>
             <span class="pill">Best score</span>
             <span class="pill">Click · Space</span>
+          </div>
+          <div class="card-btn">Play Now</div>
+        </div>
+      </a>
+
+      <!-- Snake card -->
+      <a class="game-card purple" href="snake.html">
+        <div class="card-glow"></div>
+        <div class="card-preview">
+          <div class="card-icon">🐍</div>
+        </div>
+        <div class="card-body">
+          <span class="card-tag">Arcade · Classic</span>
+          <h2 class="card-title">Snake</h2>
+          <p class="card-desc">
+            The timeless classic, reimagined with neon style. Eat food, grow longer,
+            and don't bite yourself — speed ramps up as your snake grows.
+          </p>
+          <div class="card-features">
+            <span class="pill">7 speed levels</span>
+            <span class="pill">Bonus food</span>
+            <span class="pill">Best score</span>
+            <span class="pill">Arrow keys</span>
           </div>
           <div class="card-btn">Play Now</div>
         </div>
