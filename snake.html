@@ -13,7 +13,7 @@
       font-family: 'Segoe UI', system-ui, sans-serif;
       user-select: none;
     }
-    canvas { display: block; }
+    canvas { display: block; cursor: default; }
     #hub-btn {
       position: fixed; top: 14px; left: 14px;
       background: rgba(13,13,26,0.85); color: #a8dadc;
@@ -31,12 +31,12 @@
 <canvas id="canvas"></canvas>
 <script>
 // ─── Layout ───────────────────────────────────────────────────────────────────
-const CELL  = 24;
-const COLS  = 22;
-const ROWS  = 19;
-const HDR   = 68;              // header bar height
-const W     = COLS * CELL;     // 528
-const H     = ROWS * CELL + HDR; // 524
+const CELL = 24;
+const COLS = 22;
+const ROWS = 19;
+const HDR  = 68;
+const W    = COLS * CELL;        // 528
+const H    = ROWS * CELL + HDR;  // 524
 
 const canvas = document.getElementById('canvas');
 const ctx    = canvas.getContext('2d');
@@ -50,7 +50,39 @@ function applyScale() {
 applyScale();
 window.addEventListener('resize', applyScale);
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Difficulty configs ───────────────────────────────────────────────────────
+const DIFFICULTIES = [
+  {
+    id: 'easy',
+    label: 'EASY',
+    color: '#69f0ae',
+    desc: 'Walls wrap around  ·  Slower speed',
+    wrapWalls: true,
+    speedMult: 0.72,
+  },
+  {
+    id: 'medium',
+    label: 'MEDIUM',
+    color: '#ffab40',
+    desc: 'Walls kill  ·  Normal speed',
+    wrapWalls: false,
+    speedMult: 1.0,
+  },
+  {
+    id: 'hard',
+    label: 'HARD',
+    color: '#ff4444',
+    desc: 'Walls kill  ·  1.5× faster',
+    wrapWalls: false,
+    speedMult: 1.55,
+  },
+];
+
+function diffConfig() {
+  return DIFFICULTIES.find(d => d.id === difficulty) || DIFFICULTIES[1];
+}
+
+// ─── Speed levels (score-based) ───────────────────────────────────────────────
 const STEP_RATES = [
   { threshold: 0,  rate: 7  },
   { threshold: 5,  rate: 8  },
@@ -60,53 +92,51 @@ const STEP_RATES = [
   { threshold: 50, rate: 15 },
   { threshold: 70, rate: 18 },
 ];
+const LEVEL_COLORS = ['#69f0ae','#b2ff59','#ffff00','#ffab40','#ff6d00','#ff4444','#ff00ff'];
 
 function getStepRate(sc) {
   let r = STEP_RATES[0].rate;
   for (const t of STEP_RATES) if (sc >= t.threshold) r = t.rate;
-  return r;
+  return r * diffConfig().speedMult;
 }
-
 function getLevel(sc) {
   let lv = 1;
   for (let i = 1; i < STEP_RATES.length; i++) if (sc >= STEP_RATES[i].threshold) lv = i + 1;
   return lv;
 }
 
-const LEVEL_COLORS = ['#69f0ae','#b2ff59','#ffff00','#ffab40','#ff6d00','#ff4444','#ff00ff'];
-
 // ─── State ────────────────────────────────────────────────────────────────────
-let state     = 'menu'; // menu | playing | paused | dead
-let snake     = [];
-let dir       = { x: 1, y: 0 };
-let pendDir   = null;   // next queued direction
-let food      = null;
-let bonus     = null;   // bonus food object
-let score     = 0;
-let best      = parseInt(localStorage.getItem('snakeBest') || '0', 10);
-let stepTimer = 0;
-let gameTime  = 0;
-let bonusTimer = 0;
-let deathFlash = 0;     // 0–1, used for death animation
-let ateFlash   = 0;     // flashes when eating
-let scorePopups = [];   // floating score numbers
+let state      = 'select'; // select | playing | paused | dead
+let difficulty = 'medium';
+let snake      = [];
+let dir        = { x:1, y:0 };
+let pendDir    = null;
+let food       = null;
+let bonus      = null;
+let score      = 0;
+let best       = parseInt(localStorage.getItem('snakeBest') || '0', 10);
+let stepTimer  = 0;
+let gameTime   = 0;
+let deathFlash = 0;
+let ateFlash   = 0;
+let scorePopups = [];
+let mouseX = 0, mouseY = 0;
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 function initGame() {
   const sx = Math.floor(COLS / 2), sy = Math.floor(ROWS / 2);
-  snake    = [{ x:sx, y:sy }, { x:sx-1, y:sy }, { x:sx-2, y:sy }];
-  dir      = { x:1, y:0 };
-  pendDir  = null;
-  score    = 0;
-  stepTimer = 0;
-  gameTime  = 0;
-  bonusTimer = 0;
-  bonus    = null;
-  deathFlash = 0;
-  ateFlash   = 0;
+  snake       = [{ x:sx, y:sy }, { x:sx-1, y:sy }, { x:sx-2, y:sy }];
+  dir         = { x:1, y:0 };
+  pendDir     = null;
+  score       = 0;
+  stepTimer   = 0;
+  gameTime    = 0;
+  bonus       = null;
+  deathFlash  = 0;
+  ateFlash    = 0;
   scorePopups = [];
-  food     = spawnFood();
-  state    = 'playing';
+  food        = spawnFood();
+  state       = 'playing';
 }
 
 function spawnFood() {
@@ -118,12 +148,10 @@ function spawnFood() {
 }
 
 function spawnBonus() {
-  let cell;
-  let tries = 0;
+  let cell, tries = 0;
   do {
     cell = { x: Math.floor(Math.random()*COLS), y: Math.floor(Math.random()*ROWS) };
-    tries++;
-    if (tries > 200) return null;
+    if (++tries > 200) return null;
   } while (snake.some(s => s.x===cell.x && s.y===cell.y) ||
            (food && food.x===cell.x && food.y===cell.y));
   return { x:cell.x, y:cell.y, value:3, ttl:9.0 };
@@ -135,6 +163,7 @@ const DIRS = {
   arrowleft:'left', a:'left', arrowright:'right', d:'right',
 };
 const OPP = { up:'down', down:'up', left:'right', right:'left' };
+
 function curDirName() {
   if (dir.x===1)  return 'right';
   if (dir.x===-1) return 'left';
@@ -147,12 +176,10 @@ function nameToDir(n) {
 
 window.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
-
-  // Start / restart / unpause
   if (k === ' ' || k === 'enter') {
     e.preventDefault();
-    if (state === 'menu' || state === 'dead') initGame();
-    else if (state === 'paused') state = 'playing';
+    if (state === 'dead')   { state = 'select'; return; }
+    if (state === 'paused') { state = 'playing'; return; }
     return;
   }
   if (k === 'p' || k === 'escape') {
@@ -161,7 +188,6 @@ window.addEventListener('keydown', e => {
     else if (state === 'paused') state = 'playing';
     return;
   }
-
   const d = DIRS[k];
   if (!d) return;
   e.preventDefault();
@@ -171,49 +197,86 @@ window.addEventListener('keydown', e => {
   }
 });
 
-canvas.addEventListener('click', () => {
-  if (state === 'menu' || state === 'dead') initGame();
-  else if (state === 'paused') state = 'playing';
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  mouseX = (e.clientX - rect.left) * (W / rect.width);
+  mouseY = (e.clientY - rect.top)  * (H / rect.height);
+  canvas.style.cursor = (state === 'select' && getHoveredDiff() !== null) ? 'pointer' : 'default';
+});
+
+function getDiffBtnRect(i) {
+  const bw = 300, bh = 72, gap = 14;
+  const total = DIFFICULTIES.length * bh + (DIFFICULTIES.length - 1) * gap;
+  const startY = HDR + (H - HDR - total) / 2 - 16;
+  return { x: (W - bw) / 2, y: startY + i * (bh + gap), w: bw, h: bh };
+}
+
+function getHoveredDiff() {
+  for (let i = 0; i < DIFFICULTIES.length; i++) {
+    const r = getDiffBtnRect(i);
+    if (mouseX >= r.x && mouseX <= r.x+r.w && mouseY >= r.y && mouseY <= r.y+r.h)
+      return i;
+  }
+  return null;
+}
+
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const cx = (e.clientX - rect.left) * (W / rect.width);
+  const cy = (e.clientY - rect.top)  * (H / rect.height);
+
+  if (state === 'select') {
+    for (let i = 0; i < DIFFICULTIES.length; i++) {
+      const r = getDiffBtnRect(i);
+      if (cx >= r.x && cx <= r.x+r.w && cy >= r.y && cy <= r.y+r.h) {
+        difficulty = DIFFICULTIES[i].id;
+        initGame();
+        return;
+      }
+    }
+    return;
+  }
+  if (state === 'dead')   { state = 'select'; return; }
+  if (state === 'paused') { state = 'playing'; return; }
 });
 
 // ─── Game step ────────────────────────────────────────────────────────────────
 function step() {
   if (pendDir) { dir = nameToDir(pendDir); pendDir = null; }
 
-  const head  = snake[0];
-  const nx    = head.x + dir.x;
-  const ny    = head.y + dir.y;
+  const head = snake[0];
+  let nx = head.x + dir.x;
+  let ny = head.y + dir.y;
 
-  // Wall collision
-  if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) {
-    killSnake(); return;
+  if (diffConfig().wrapWalls) {
+    nx = ((nx % COLS) + COLS) % COLS;
+    ny = ((ny % ROWS) + ROWS) % ROWS;
+  } else {
+    if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) { killSnake(); return; }
   }
-  // Self collision (ignore tail tip which moves away)
+
+  // Self collision (skip tail tip — it moves away this same tick)
   for (let i = 0; i < snake.length - 1; i++) {
     if (snake[i].x === nx && snake[i].y === ny) { killSnake(); return; }
   }
 
   snake.unshift({ x:nx, y:ny });
-
   let grew = false;
 
-  // Regular food
   if (food && nx === food.x && ny === food.y) {
     addScore(food.value, nx, ny);
-    food   = spawnFood();
-    grew   = true;
+    food = spawnFood();
+    grew = true;
     ateFlash = 1;
     if (!bonus && Math.random() < 0.28) {
       const b = spawnBonus();
       if (b) bonus = b;
     }
   }
-
-  // Bonus food
   if (bonus && nx === bonus.x && ny === bonus.y) {
     addScore(bonus.value, nx, ny);
-    bonus  = null;
-    grew   = true;
+    bonus = null;
+    grew = true;
     ateFlash = 1;
   }
 
@@ -223,13 +286,8 @@ function step() {
 function addScore(v, gx, gy) {
   score += v;
   if (score > best) { best = score; localStorage.setItem('snakeBest', best); }
-  scorePopups.push({
-    x: gx * CELL + CELL/2,
-    y: HDR + gy * CELL,
-    text: '+' + v,
-    t: 1.0,
-    color: v > 1 ? '#ffd740' : '#69f0ae',
-  });
+  scorePopups.push({ x: gx*CELL+CELL/2, y: HDR+gy*CELL, text:'+'+v, t:1.0,
+                     color: v > 1 ? '#ffd740' : '#69f0ae' });
 }
 
 function killSnake() {
@@ -243,93 +301,106 @@ function hexToRgb(h) {
   return [(v>>16)&0xff, (v>>8)&0xff, v&0xff];
 }
 function lerpRgb(a, b, t) {
-  return a.map((c,i) => Math.round(c*(1-t) + b[i]*t));
+  return a.map((c,i) => Math.round(c*(1-t)+b[i]*t));
 }
 const HEAD_RGB = hexToRgb('#00e676');
 const MID_RGB  = hexToRgb('#00b248');
 const TAIL_RGB = hexToRgb('#004d20');
 
 function snakeColor(i, len) {
-  const t = i / Math.max(len - 1, 1);
-  const rgb = t < 0.5
-    ? lerpRgb(HEAD_RGB, MID_RGB,  t * 2)
-    : lerpRgb(MID_RGB,  TAIL_RGB, (t - 0.5) * 2);
+  const t = i / Math.max(len-1, 1);
+  const rgb = t < 0.5 ? lerpRgb(HEAD_RGB, MID_RGB, t*2) : lerpRgb(MID_RGB, TAIL_RGB, (t-0.5)*2);
   return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
 }
 
 // ─── Drawing ──────────────────────────────────────────────────────────────────
 function drawBackground() {
-  // Header
-  const hg = ctx.createLinearGradient(0, 0, 0, HDR);
-  hg.addColorStop(0, '#06090f'); hg.addColorStop(1, '#0d121e');
+  const hg = ctx.createLinearGradient(0,0,0,HDR);
+  hg.addColorStop(0,'#06090f'); hg.addColorStop(1,'#0d121e');
   ctx.fillStyle = hg;
-  ctx.fillRect(0, 0, W, HDR);
+  ctx.fillRect(0,0,W,HDR);
 
-  // Game area background
   ctx.fillStyle = '#080d14';
-  ctx.fillRect(0, HDR, W, H - HDR);
+  ctx.fillRect(0,HDR,W,H-HDR);
 
-  // Subtle grid
   ctx.strokeStyle = 'rgba(255,255,255,0.04)';
   ctx.lineWidth   = 0.5;
-  for (let c = 0; c <= COLS; c++) {
-    ctx.beginPath(); ctx.moveTo(c*CELL, HDR); ctx.lineTo(c*CELL, H); ctx.stroke();
+  for (let c=0; c<=COLS; c++) {
+    ctx.beginPath(); ctx.moveTo(c*CELL,HDR); ctx.lineTo(c*CELL,H); ctx.stroke();
   }
-  for (let r = 0; r <= ROWS; r++) {
-    ctx.beginPath(); ctx.moveTo(0, HDR+r*CELL); ctx.lineTo(W, HDR+r*CELL); ctx.stroke();
+  for (let r=0; r<=ROWS; r++) {
+    ctx.beginPath(); ctx.moveTo(0,HDR+r*CELL); ctx.lineTo(W,HDR+r*CELL); ctx.stroke();
   }
 
-  // Header divider
   ctx.strokeStyle = '#1a3a6a'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(0, HDR); ctx.lineTo(W, HDR); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,HDR); ctx.lineTo(W,HDR); ctx.stroke();
 
-  // Border glow
-  const lv   = state === 'playing' || state === 'paused' ? getLevel(score) : 1;
-  const lcol = LEVEL_COLORS[Math.min(lv-1, LEVEL_COLORS.length-1)];
-  ctx.strokeStyle = lcol + '55';
-  ctx.lineWidth   = 3;
-  ctx.strokeRect(1.5, HDR + 1.5, W - 3, H - HDR - 3);
+  // Border glow — difficulty colour on select screen, level colour in-game
+  let lcol;
+  if (state === 'select') {
+    lcol = '#a8dadc';
+  } else {
+    const lv = getLevel(state === 'playing' || state === 'paused' ? score : 0);
+    lcol = LEVEL_COLORS[Math.min(lv-1, LEVEL_COLORS.length-1)];
+  }
+  ctx.strokeStyle = lcol + '55'; ctx.lineWidth = 3;
+  ctx.strokeRect(1.5, HDR+1.5, W-3, H-HDR-3);
 }
 
 function drawHUD() {
-  // Game title (left)
+  // Left: SNAKE label
   ctx.fillStyle = '#00e676';
-  ctx.font      = 'bold 14px sans-serif';
+  ctx.font      = 'bold 13px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('SNAKE', 18, 28);
+  ctx.fillText('SNAKE', 16, 20);
 
-  // Score (centre)
-  const sc     = state === 'menu' ? 0 : score;
+  // Left: difficulty badge (only during play)
+  if (state === 'playing' || state === 'paused' || state === 'dead') {
+    const dc = diffConfig();
+    ctx.fillStyle   = dc.color + '28';
+    ctx.strokeStyle = dc.color + '88';
+    ctx.lineWidth   = 1;
+    ctx.beginPath(); ctx.roundRect(14, 26, 56, 18, 9); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(14, 26, 56, 18, 9); ctx.stroke();
+    ctx.fillStyle = dc.color;
+    ctx.font      = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(dc.label, 42, 39);
+  }
+
+  // Centre: score
+  const sc = state === 'select' ? 0 : score;
   ctx.fillStyle = '#ffffff';
   ctx.font      = 'bold 30px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(sc, W/2, 46);
 
-  // Best (right top)
+  // Right: best
   ctx.fillStyle = '#4a5880';
   ctx.font      = 'bold 10px sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText('BEST', W - 16, 24);
+  ctx.fillText('BEST', W-16, 22);
   ctx.fillStyle = '#7986a8';
   ctx.font      = 'bold 16px sans-serif';
-  ctx.fillText(best, W - 16, 42);
+  ctx.fillText(best, W-16, 42);
 
-  // Level badge (right of score)
+  // Speed level badge (right of center, playing only)
   if (state === 'playing' || state === 'paused') {
     const lv   = getLevel(score);
     const lcol = LEVEL_COLORS[Math.min(lv-1, LEVEL_COLORS.length-1)];
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.beginPath(); ctx.roundRect(W/2 + 32, HDR/2 - 12, 46, 22, 11); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(W/2+32, HDR/2-12, 46, 22, 11); ctx.fill();
     ctx.fillStyle = lcol;
     ctx.font      = 'bold 11px sans-serif';
-    ctx.fillText(`LVL ${lv}`, W/2 + 55, HDR/2 + 4);
+    ctx.textAlign = 'center';
+    ctx.fillText(`LVL ${lv}`, W/2+55, HDR/2+4);
   }
 
-  // Controls hint (left bottom of header)
+  // Controls hint
   ctx.fillStyle = '#222d42';
   ctx.font      = '10px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('WASD / ↑↓←→  ·  [P] Pause', 18, 58);
+  ctx.fillText('WASD / ↑↓←→  ·  [P] Pause', 16, 61);
 
   ctx.textAlign = 'left';
 }
@@ -339,74 +410,54 @@ function drawSnake() {
   const dead = state === 'dead';
   const flash = dead ? Math.max(0, deathFlash) : 1;
 
-  for (let i = len - 1; i >= 0; i--) {
-    const seg   = snake[i];
+  for (let i = len-1; i >= 0; i--) {
+    const seg    = snake[i];
     const isHead = i === 0;
-    const pad   = isHead ? 1 : 2;
-    const x     = seg.x * CELL + pad;
-    const y     = HDR + seg.y * CELL + pad;
-    const sz    = CELL - pad * 2;
-    const rad   = isHead ? 7 : 5;
+    const pad    = isHead ? 1 : 2;
+    const x      = seg.x * CELL + pad;
+    const y      = HDR + seg.y * CELL + pad;
+    const sz     = CELL - pad * 2;
+    const rad    = isHead ? 7 : 5;
 
     ctx.save();
-
     if (dead) {
-      // Alternate red/dark flicker on death
-      const flicker = Math.floor(deathFlash * 10) % 2;
       ctx.globalAlpha = flash;
-      ctx.fillStyle = flicker ? '#e94560' : '#3a0010';
+      ctx.fillStyle   = Math.floor(deathFlash*10)%2 ? '#e94560' : '#3a0010';
     } else {
       ctx.fillStyle = snakeColor(i, len);
-      // Head glow
-      if (isHead) {
-        ctx.shadowColor = '#00e676';
-        ctx.shadowBlur  = ateFlash > 0 ? 22 : 10;
-      }
+      if (isHead) { ctx.shadowColor='#00e676'; ctx.shadowBlur = ateFlash>0 ? 22 : 10; }
     }
+    ctx.beginPath(); ctx.roundRect(x,y,sz,sz,rad); ctx.fill();
 
-    ctx.beginPath();
-    ctx.roundRect(x, y, sz, sz, rad);
-    ctx.fill();
-
-    // Head: eyes
+    // Eyes
     if (isHead && !dead) {
-      ctx.shadowBlur  = 0;
-      const cx = seg.x * CELL + CELL/2;
-      const cy = HDR + seg.y * CELL + CELL/2;
-      // Eye offsets: perpendicular to direction
-      const ex = dir.y !== 0 ? 5 : 0;
-      const ey = dir.x !== 0 ? 5 : 0;
-      const fx = dir.x * 3;
-      const fy = dir.y * 3;
-      const e1x = cx + fx - ex, e1y = cy + fy - ey;
-      const e2x = cx + fx + ex, e2y = cy + fy + ey;
-
-      ctx.fillStyle = '#052010';
-      ctx.beginPath(); ctx.arc(e1x, e1y, 3, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(e2x, e2y, 3, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.arc(e1x+0.8, e1y-0.8, 1.2, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(e2x+0.8, e2y-0.8, 1.2, 0, Math.PI*2); ctx.fill();
+      ctx.shadowBlur = 0;
+      const cx = seg.x*CELL+CELL/2, cy = HDR+seg.y*CELL+CELL/2;
+      const ex = dir.y!==0 ? 5:0, ey = dir.x!==0 ? 5:0;
+      const fx = dir.x*3, fy = dir.y*3;
+      const e1x=cx+fx-ex, e1y=cy+fy-ey, e2x=cx+fx+ex, e2y=cy+fy+ey;
+      ctx.fillStyle='#052010';
+      ctx.beginPath(); ctx.arc(e1x,e1y,3,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(e2x,e2y,3,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#fff';
+      ctx.beginPath(); ctx.arc(e1x+0.8,e1y-0.8,1.2,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(e2x+0.8,e2y-0.8,1.2,0,Math.PI*2); ctx.fill();
     }
-
     ctx.restore();
   }
 
-  // Tongue (flicks when moving)
+  // Tongue flick
   if (!dead && snake.length > 0) {
-    const head  = snake[0];
-    const flick = Math.sin(gameTime * 14) > 0.2;
-    if (flick) {
-      const tx = head.x * CELL + CELL/2 + dir.x * (CELL/2 + 4);
-      const ty = HDR + head.y * CELL + CELL/2 + dir.y * (CELL/2 + 4);
-      ctx.strokeStyle = '#ff4060';
-      ctx.lineWidth   = 1.5;
-      ctx.lineCap     = 'round';
+    const head = snake[0];
+    if (Math.sin(gameTime*14) > 0.2) {
+      const tx = head.x*CELL+CELL/2 + dir.x*(CELL/2+4);
+      const ty = HDR+head.y*CELL+CELL/2 + dir.y*(CELL/2+4);
+      ctx.strokeStyle='#ff4060'; ctx.lineWidth=1.5; ctx.lineCap='round';
       ctx.beginPath();
-      ctx.moveTo(tx - dir.x * 4, ty - dir.y * 4);
-      ctx.lineTo(tx + dir.x * 3 - dir.y * 4, ty + dir.y * 3 - dir.x * 4);
-      ctx.moveTo(tx - dir.x * 4, ty - dir.y * 4);
-      ctx.lineTo(tx + dir.x * 3 + dir.y * 4, ty + dir.y * 3 + dir.x * 4);
+      ctx.moveTo(tx-dir.x*4, ty-dir.y*4);
+      ctx.lineTo(tx+dir.x*3-dir.y*4, ty+dir.y*3-dir.x*4);
+      ctx.moveTo(tx-dir.x*4, ty-dir.y*4);
+      ctx.lineTo(tx+dir.x*3+dir.y*4, ty+dir.y*3+dir.x*4);
       ctx.stroke();
     }
   }
@@ -414,69 +465,112 @@ function drawSnake() {
 
 function drawFood() {
   if (!food) return;
-  const cx  = food.x * CELL + CELL/2;
-  const cy  = HDR + food.y * CELL + CELL/2;
-  const r   = CELL * 0.32 + Math.sin(gameTime * 4.5) * 1.8;
-
+  const cx = food.x*CELL+CELL/2, cy = HDR+food.y*CELL+CELL/2;
+  const r  = CELL*0.32 + Math.sin(gameTime*4.5)*1.8;
   ctx.save();
-  ctx.shadowColor = '#ff4081';
-  ctx.shadowBlur  = 16;
-  ctx.fillStyle   = '#ff4081';
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+  ctx.shadowColor='#ff4081'; ctx.shadowBlur=16;
+  ctx.fillStyle='#ff4081';
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
   ctx.restore();
-
-  ctx.fillStyle = '#fce4ec';
-  ctx.beginPath(); ctx.arc(cx - r*0.28, cy - r*0.28, r*0.38, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fce4ec';
+  ctx.beginPath(); ctx.arc(cx-r*0.28,cy-r*0.28,r*0.38,0,Math.PI*2); ctx.fill();
 }
 
 function drawBonus() {
   if (!bonus) return;
-  const cx  = bonus.x * CELL + CELL/2;
-  const cy  = HDR + bonus.y * CELL + CELL/2;
-  const r   = CELL * 0.34 + Math.sin(gameTime * 6) * 2;
-  const frac = Math.min(1, bonus.ttl / 2); // fade out in last 2s
-
+  const cx = bonus.x*CELL+CELL/2, cy = HDR+bonus.y*CELL+CELL/2;
+  const r  = CELL*0.34 + Math.sin(gameTime*6)*2;
+  const frac = Math.min(1, bonus.ttl/2);
   ctx.save();
-  ctx.globalAlpha = frac;
-  ctx.shadowColor = '#ffd740';
-  ctx.shadowBlur  = 20;
-  ctx.fillStyle   = '#ffd740';
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#fff8e1';
-  ctx.beginPath(); ctx.arc(cx - r*0.25, cy - r*0.25, r*0.36, 0, Math.PI*2); ctx.fill();
-
-  // +3 label
-  ctx.shadowBlur = 0;
-  ctx.fillStyle  = '#4a3000';
-  ctx.font       = 'bold 9px sans-serif';
-  ctx.textAlign  = 'center';
-  ctx.fillText('+3', cx, cy + 3.5);
+  ctx.globalAlpha=frac;
+  ctx.shadowColor='#ffd740'; ctx.shadowBlur=20;
+  ctx.fillStyle='#ffd740';
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff8e1';
+  ctx.beginPath(); ctx.arc(cx-r*0.25,cy-r*0.25,r*0.36,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#4a3000'; ctx.font='bold 9px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('+3',cx,cy+3.5);
   ctx.restore();
-  ctx.textAlign = 'left';
+  ctx.textAlign='left';
 }
 
 function drawScorePopups() {
   for (const p of scorePopups) {
     ctx.save();
-    ctx.globalAlpha = p.t;
-    ctx.fillStyle   = p.color;
-    ctx.font        = 'bold 15px sans-serif';
-    ctx.textAlign   = 'center';
-    ctx.shadowColor = p.color;
-    ctx.shadowBlur  = 8;
-    ctx.fillText(p.text, p.x, p.y);
+    ctx.globalAlpha=p.t; ctx.fillStyle=p.color;
+    ctx.font='bold 15px sans-serif'; ctx.textAlign='center';
+    ctx.shadowColor=p.color; ctx.shadowBlur=8;
+    ctx.fillText(p.text,p.x,p.y);
     ctx.restore();
   }
+  ctx.textAlign='left';
+}
+
+// ─── Difficulty select screen ──────────────────────────────────────────────────
+function drawDifficultySelect() {
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, HDR, W, H-HDR);
+
+  // Title
+  ctx.fillStyle = '#ffffff';
+  ctx.font      = 'bold 20px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('CHOOSE DIFFICULTY', W/2, HDR + 44);
+
+  const hov = getHoveredDiff();
+
+  DIFFICULTIES.forEach((diff, i) => {
+    const r     = getDiffBtnRect(i);
+    const isHov = hov === i;
+
+    ctx.save();
+    ctx.globalAlpha = isHov ? 1 : 0.82;
+
+    // Card bg
+    ctx.fillStyle = isHov ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.04)';
+    ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 12); ctx.fill();
+
+    // Border
+    ctx.strokeStyle = diff.color + (isHov ? 'cc' : '55');
+    ctx.lineWidth   = isHov ? 2 : 1;
+    ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 12); ctx.stroke();
+
+    // Left accent bar
+    ctx.fillStyle = diff.color;
+    ctx.beginPath(); ctx.roundRect(r.x, r.y, 5, r.h, [12,0,0,12]); ctx.fill();
+
+    // Label
+    ctx.fillStyle = diff.color;
+    ctx.font      = 'bold 17px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(diff.label, r.x+20, r.y+28);
+
+    // Description
+    ctx.fillStyle = '#8896b0';
+    ctx.font      = '12px sans-serif';
+    ctx.fillText(diff.desc, r.x+20, r.y+50);
+
+    // Arrow
+    if (isHov) {
+      ctx.fillStyle = diff.color;
+      ctx.font      = 'bold 16px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('▶', r.x+r.w-14, r.y+r.h/2+6);
+    }
+    ctx.restore();
+  });
+
   ctx.textAlign = 'left';
 }
 
-function drawPanel(title, lines, accentColor) {
-  // Dim overlay over game area only
+// ─── Generic overlay panel ─────────────────────────────────────────────────────
+function drawPanel(title, lines, accentColor, hint) {
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.fillRect(0, HDR, W, H - HDR);
+  ctx.fillRect(0, HDR, W, H-HDR);
 
-  const pw = 310, ph = 58 + lines.length * 34 + 28;
-  const px = (W - pw) / 2, py = HDR + (H - HDR - ph) / 2;
+  const pw = 310, ph = 58 + lines.length*34 + 28;
+  const px = (W-pw)/2, py = HDR + (H-HDR-ph)/2;
 
   ctx.fillStyle = '#060a12';
   ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 16); ctx.fill();
@@ -486,15 +580,15 @@ function drawPanel(title, lines, accentColor) {
   ctx.fillStyle = accentColor;
   ctx.font      = 'bold 28px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(title, W/2, py + 44);
+  ctx.fillText(title, W/2, py+44);
 
   ctx.fillStyle = '#b0b8cc';
   ctx.font      = '14px sans-serif';
-  lines.forEach((l, i) => ctx.fillText(l, W/2, py + 78 + i * 34));
+  lines.forEach((l,i) => ctx.fillText(l, W/2, py+78+i*34));
 
   ctx.fillStyle = '#2e3850';
   ctx.font      = '12px sans-serif';
-  ctx.fillText('Click or [Space] to play', W/2, py + ph - 11);
+  ctx.fillText(hint || 'Click or [Space] to continue', W/2, py+ph-11);
   ctx.textAlign = 'left';
 }
 
@@ -502,42 +596,33 @@ function drawPanel(title, lines, accentColor) {
 let lastTs = 0;
 
 function loop(ts) {
-  const dt = Math.min((ts - lastTs) / 1000, 0.1);
+  const dt = Math.min((ts-lastTs)/1000, 0.1);
   lastTs = ts;
 
-  // Update
   if (state === 'playing') {
     gameTime  += dt;
     stepTimer += dt;
-    ateFlash   = Math.max(0, ateFlash - dt * 5);
+    ateFlash   = Math.max(0, ateFlash - dt*5);
 
     const interval = 1 / getStepRate(score);
-    if (stepTimer >= interval) {
-      stepTimer -= interval;
-      step();
-    }
+    if (stepTimer >= interval) { stepTimer -= interval; step(); }
 
-    // Bonus food timer
-    if (bonus) {
-      bonus.ttl -= dt;
-      if (bonus.ttl <= 0) bonus = null;
-    }
+    if (bonus) { bonus.ttl -= dt; if (bonus.ttl <= 0) bonus = null; }
 
-    // Score popups
-    for (const p of scorePopups) { p.t -= dt * 1.8; p.y -= dt * 35; }
+    for (const p of scorePopups) { p.t -= dt*1.8; p.y -= dt*35; }
     scorePopups = scorePopups.filter(p => p.t > 0);
   }
 
   if (state === 'dead') {
-    deathFlash -= dt * 2.5;
-    for (const p of scorePopups) { p.t -= dt * 1.8; p.y -= dt * 35; }
+    deathFlash -= dt*2.5;
+    for (const p of scorePopups) { p.t -= dt*1.8; p.y -= dt*35; }
     scorePopups = scorePopups.filter(p => p.t > 0);
   }
 
   // Draw
   drawBackground();
 
-  if (state !== 'menu') {
+  if (state !== 'select') {
     drawFood();
     drawBonus();
     drawSnake();
@@ -546,20 +631,18 @@ function loop(ts) {
 
   drawHUD();
 
-  if (state === 'menu') {
-    drawPanel('SNAKE', [
-      'Eat food to grow and score',
-      'Avoid walls and your own body',
-      'Speed increases as you score',
-    ], '#00e676');
+  if (state === 'select') {
+    drawDifficultySelect();
   } else if (state === 'paused') {
     drawPanel('PAUSED', ['Press [P] or click to continue'], '#a8dadc');
   } else if (state === 'dead' && deathFlash <= 0) {
-    const newBest = score >= best;
-    drawPanel(newBest && score > 0 ? 'NEW BEST! 🏆' : 'GAME OVER', [
-      `Score: ${score}`,
-      `Best: ${best}`,
-    ], newBest && score > 0 ? '#ffd740' : '#e94560');
+    const newBest = score >= best && score > 0;
+    drawPanel(
+      newBest ? 'NEW BEST! \uD83C\uDFC6' : 'GAME OVER',
+      [`Score: ${score}`, `Best: ${best}`],
+      newBest ? '#ffd740' : '#e94560',
+      'Click or [Space] to choose difficulty'
+    );
   }
 
   requestAnimationFrame(loop);
