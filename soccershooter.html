@@ -318,8 +318,8 @@ function updateBall(dt) {
 
   // ── Boundaries ─────────────────────────────────────────────────────────────
   if (ball.y - BALL_R < 0) {
-    ball.y  = BALL_R;
-    ball.vy = Math.abs(ball.vy) * 0.5;
+    onMiss('Off the top!');
+    return;
   }
   if (ball.x - BALL_R < 0) {
     ball.x  = BALL_R;
