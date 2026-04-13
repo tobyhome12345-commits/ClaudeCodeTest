@@ -106,7 +106,7 @@ const PLAYER_SPR = [
 // ─────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────
-const ALIEN_COLS = 11, ALIEN_ROWS = 5;
+const ALIEN_COLS = 9, ALIEN_ROWS = 4;
 const A_W  = 8 * SP;           // alien rendered width  (24)
 const A_H  = 8 * SP;           // alien rendered height (24)
 const A_GX = 16;               // horizontal gap between aliens
@@ -264,7 +264,7 @@ function initAliens() {
         x: GRID_LEFT + col * A_STEP_X,
         y: Math.min(startY + row * A_STEP_Y, BAR_Y - ALIEN_ROWS * A_STEP_Y + row * A_STEP_Y),
         alive: true,
-        type: row === 0 ? 'squid' : row <= 2 ? 'crab' : 'octopus',
+        type: row === 0 ? 'squid' : row === 1 ? 'crab' : 'octopus',
         frame: 0,
       });
     }
@@ -345,9 +345,9 @@ function updateAliens(dt) {
   const ratio    = alive.length / (ALIEN_COLS * ALIEN_ROWS);
   const interval = Math.max(0.045, alienMoveInterval * ratio);
   if (alienMoveTimer < interval) return;
-  alienMoveTimer = 0;
+  alienMoveTimer -= interval;
 
-  const step = 8 + wave * 1.2;
+  const step = Math.min(8 + wave * 1.2, 36);
 
   if (alienDropQueued) {
     for (const a of aliens) if (a.alive) a.y += 18;
@@ -882,7 +882,9 @@ function update(dt) {
 
   // ── playing ──
   updatePlayer(dt);
+  if (state !== 'playing') return;
   updateAliens(dt);
+  if (state !== 'playing') return;
   updateBullets(dt);
   updateUFO(dt);
   updateExplosions(dt);
@@ -893,7 +895,7 @@ function update(dt) {
 
   checkCollisions();
 
-  if (liveAliens().length === 0 && !plExploding) waveComplete();
+  if (state === 'playing' && liveAliens().length === 0 && !plExploding) waveComplete();
 }
 
 function draw() {
