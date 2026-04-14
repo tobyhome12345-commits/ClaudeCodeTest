@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meteor Dodge</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d0d1a;
+      display: flex; align-items: center; justify-content: center;
+      height: 100vh; overflow: hidden;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      user-select: none;
+    }
+    canvas { display: block; image-rendering: pixelated; }
+    #hub-btn {
+      position: fixed; top: 14px; left: 14px;
+      background: rgba(13,13,26,0.85); color: #a8dadc;
+      border: 1px solid #1a3a6a; border-radius: 20px;
+      padding: 0.4rem 1rem; font-size: 0.8rem; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+      text-decoration: none; z-index: 10;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    #hub-btn:hover { border-color: #a8dadc; color: #fff; }
+  </style>
+</head>
+<body>
+<a id="hub-btn" href="index.html">&#8592; Hub</a>
+<canvas id="canvas"></canvas>
+<script>
+// ── Constants ───────────────────────────────────────────────────────────
+const W              = 480;
+const H              = 640;
+const PLAYER_W       = 36;
+const PLAYER_H       = 24;
+const PLAYER_Y       = H - 58;
+const BASE_SPEED     = 290;      // px/s
+const INV_TIME       = 1.6;      // invincibility seconds after hit
+const BASE_SPAWN     = 1.35;     // meteors/sec
+const BASE_FALL      = 155;      // px/s
+const RAMP           = 0.038;    // difficulty increase per second
+const SCORE_RATE     = 14;       // score pts/sec
+const GOLD_RATE      = 1.1;      // gold/sec
+
+// ── Canvas ──────────────────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+canvas.width  = W;
+canvas.height = H;
+
+// ── Persistent state (survives runs) ────────────────────────────────────
+let gold = 0;
+let upg = { speed: 0, heart: 0, scoreM: 0, hitbox: 0 }; // 0-3 each
+
+// ── Per-run state ────────────────────────────────────────────────────────
+let state    = 'title'; // 'title' | 'playing' | 'shop'
+let score, hearts, maxHearts, shields;
+let meteors, particles;
+let px, invTimer, spawnTimer, gameTime, lastTime;
+let keys = {};
+let shopGold; // snapshot of gold when shop opened
+
+// ── Stars (static background) ────────────────────────────────────────────
+const STARS = Array.from({ length: 90 }, () => ({
+  x: Math.random() * W,
+  y: Math.random() * H,
+  r: Math.random() * 1.5 + 0.25,
+  a: Math.random() * 0.55 + 0.08,
+}));
+
+// ── Shop definition ──────────────────────────────────────────────────────
+// Each item: label, icon, desc fn, cost, maxLevel, getLevel fn, apply fn
+const SHOP = [
+  {
+    label: 'Revive',
+    icon: '❤',
+    desc:    () => 'Restore all hearts',
+    cost:    () => 35,
+    maxLvl:  () => Infinity,
+    getLevel:() => 0,
+    canBuy:  () => hearts < maxHearts,
+    apply:   () => { hearts = maxHearts; },
+  },
+  {
+    label: 'Shield',
+    icon: '🛡',
+    desc:    () => `Block next hit  (${shields}/3 active)`,
+    cost:    () => 28,
+    maxLvl:  () => 3,
+    getLevel:() => shields,
+    canBuy:  () => shields < 3,
+    apply:   () => { shields = Math.min(shields + 1, 3); },
+  },
+  {
+    label: 'Speed Boost',
+    icon: '⚡',
+    desc:    () => `Move 22% faster  (${upg.speed}/3)`,
+    cost:    () => 40 + upg.speed * 10,
+    maxLvl:  () => 3,
+    getLevel:() => upg.speed,
+    canBuy:  () => upg.speed < 3,
+    apply:   () => { upg.speed++; },
+  },
+  {
+    label: 'Extra Heart',
+    icon: '💜',
+    desc:    () => `+1 max heart  (${upg.heart}/3)`,
+    cost:    () => 55 + upg.heart * 15,
+    maxLvl:  () => 3,
+    getLevel:() => upg.heart,
+    canBuy:  () => upg.heart < 3,
+    apply:   () => { upg.heart++; maxHearts++; hearts = maxHearts; },
+  },
+  {
+    label: 'Score Boost',
+    icon: '✦',
+    desc:    () => `+50% score/sec  (${upg.scoreM}/3)`,
+    cost:    () => 45 + upg.scoreM * 10,
+    maxLvl:  () => 3,
+    getLevel:() => upg.scoreM,
+    canBuy:  () => upg.scoreM < 3,
+    apply:   () => { upg.scoreM++; },
+  },
+  {
+    label: 'Slim Down',
+    icon: '◇',
+    desc:    () => `Smaller hitbox  (${upg.hitbox}/2)`,
+    cost:    () => 38 + upg.hitbox * 12,
+    maxLvl:  () => 2,
+    getLevel:() => upg.hitbox,
+    canBuy:  () => upg.hitbox < 2,
+    apply:   () => { upg.hitbox++; },
+  },
+];
+
+// Shop layout
+const S_COLS     = 2;
+const S_ITEM_W   = 183;
+const S_ITEM_H   = 85;
+const S_GAP_X    = 18;
+const S_GAP_Y    = 12;
+const S_START_Y  = 210;
+const S_TOTAL_W  = S_COLS * S_ITEM_W + (S_COLS - 1) * S_GAP_X; // 384
+const S_START_X  = (W - S_TOTAL_W) / 2; // 48
+
+function shopRect(i) {
+  const col = i % S_COLS;
+  const row = Math.floor(i / S_COLS);
+  return {
+    x: S_START_X + col * (S_ITEM_W + S_GAP_X),
+    y: S_START_Y + row * (S_ITEM_H + S_GAP_Y),
+    w: S_ITEM_W,
+    h: S_ITEM_H,
+  };
+}
+
+const ROWS       = Math.ceil(SHOP.length / S_COLS); // 3
+const CONT_Y     = S_START_Y + ROWS * (S_ITEM_H + S_GAP_Y) - S_GAP_Y + 18;
+const CONT_W     = 165;
+const CONT_H     = 44;
+const CONT_X     = W / 2 - CONT_W / 2;
+
+// ── Init / reset ─────────────────────────────────────────────────────────
+function startGame() {
+  maxHearts = 3 + upg.heart;
+  hearts    = maxHearts;
+  shields   = 0;
+  score     = 0;
+  meteors   = [];
+  particles = [];
+  px        = W / 2;
+  invTimer  = 0;
+  spawnTimer = 0;
+  gameTime  = 0;
+  lastTime  = performance.now();
+  state     = 'playing';
+}
+
+function resumeGame() {
+  // resume from shop with whatever hearts/upgrades were bought
+  if (hearts <= 0) hearts = 1; // safety
+  meteors   = [];
+  spawnTimer = 0;
+  invTimer  = INV_TIME; // brief grace
+  state     = 'playing';
+}
+
+// ── Input ────────────────────────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  if ((e.key === ' ' || e.key === 'Enter') && state === 'title') startGame();
+});
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+canvas.addEventListener('click', e => {
+  if (state === 'title') { startGame(); return; }
+  if (state === 'shop')  { handleShopClick(e); }
+});
+
+function handleShopClick(e) {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (W / rect.width);
+  const my = (e.clientY - rect.top)  * (H / rect.height);
+
+  // Continue / Restart button
+  if (mx >= CONT_X && mx <= CONT_X + CONT_W && my >= CONT_Y && my <= CONT_Y + CONT_H) {
+    if (hearts > 0) {
+      resumeGame();
+    } else {
+      startGame(); // hearts still 0 → fresh run, keep gold & upgrades
+    }
+    return;
+  }
+
+  // Shop items
+  SHOP.forEach((item, i) => {
+    const r = shopRect(i);
+    if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) {
+      if (item.canBuy() && gold >= item.cost()) {
+        gold -= item.cost();
+        item.apply();
+      }
+    }
+  });
+}
+
+// ── Spawning ─────────────────────────────────────────────────────────────
+const COLORS = ['#e94560','#a8dadc','#c084fc','#f0c030','#00c8a0','#f97316'];
+
+function spawnMeteor(diff) {
+  const roll = Math.random();
+  let r, vy, color;
+  if (roll < 0.15) {        // big slow
+    r  = rnd(22, 32);
+    vy = (BASE_FALL + diff * 75) * 0.70;
+    color = '#c084fc';
+  } else if (roll < 0.30) { // small fast
+    r  = rnd(7, 13);
+    vy = (BASE_FALL + diff * 75) * 1.65;
+    color = '#f0c030';
+  } else {                  // normal
+    r  = rnd(13, 22);
+    vy = BASE_FALL + diff * 75;
+    color = COLORS[Math.floor(Math.random() * COLORS.length)];
+  }
+  meteors.push({
+    x: rnd(r + 8, W - r - 8),
+    y: -r - 4,
+    r,
+    vy,
+    color,
+    rot:      Math.random() * Math.PI * 2,
+    rotSpeed: (Math.random() - 0.5) * 3.5,
+    dead: false,
+  });
+}
+
+function rnd(a, b) { return a + Math.random() * (b - a); }
+
+// ── Particles ─────────────────────────────────────────────────────────────
+function burst(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = rnd(55, 200);
+    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, r: rnd(2, 5), life: 1, color });
+  }
+}
+
+// ── Player hitbox ─────────────────────────────────────────────────────────
+function playerR() { return 14 * (1 - upg.hitbox * 0.14); }
+
+// ── Update ────────────────────────────────────────────────────────────────
+function update(dt) {
+  if (state !== 'playing') return;
+
+  gameTime   += dt;
+  const diff  = gameTime * RAMP;
+  const rate  = BASE_SPAWN + diff * 0.9;
+  const multi = 1 + upg.scoreM * 0.5;
+
+  score += SCORE_RATE * dt * multi;
+  gold  += GOLD_RATE  * dt;
+
+  // Player movement
+  const speed = BASE_SPEED * (1 + upg.speed * 0.22);
+  if (keys['a'] || keys['arrowleft'])  px -= speed * dt;
+  if (keys['d'] || keys['arrowright']) px += speed * dt;
+  px = Math.max(PLAYER_W / 2, Math.min(W - PLAYER_W / 2, px));
+
+  if (invTimer > 0) invTimer -= dt;
+
+  // Spawn
+  spawnTimer += dt;
+  const interval = 1 / rate;
+  while (spawnTimer >= interval) {
+    spawnTimer -= interval;
+    spawnMeteor(diff);
+  }
+
+  // Move meteors
+  for (const m of meteors) {
+    m.y   += m.vy  * dt;
+    m.rot += m.rotSpeed * dt;
+  }
+
+  // Collision
+  if (invTimer <= 0) {
+    const pr = playerR();
+    for (const m of meteors) {
+      if (m.dead) continue;
+      const dx = px - m.x, dy = PLAYER_Y - m.y;
+      if (dx * dx + dy * dy < (pr + m.r * 0.72) ** 2) {
+        m.dead = true;
+        burst(m.x, m.y, m.color, 10);
+        if (shields > 0) {
+          shields--;
+          burst(px, PLAYER_Y, '#00c8a0', 8);
+          invTimer = 0.5;
+        } else {
+          hearts--;
+          burst(px, PLAYER_Y, '#e94560', 14);
+          invTimer = INV_TIME;
+          if (hearts <= 0) {
+            shopGold = Math.floor(gold);
+            state = 'shop';
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  // Prune
+  meteors   = meteors.filter(m => !m.dead && m.y < H + 60);
+
+  // Particles
+  for (const p of particles) {
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 220 * dt;
+    p.life -= dt * 1.8;
+  }
+  particles = particles.filter(p => p.life > 0);
+}
+
+// ── Draw helpers ──────────────────────────────────────────────────────────
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y,     x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x,     y + h, x,     y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x,     y,     x + r, y, r);
+  ctx.closePath();
+}
+
+function drawStars() {
+  for (const s of STARS) {
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(168,218,220,${s.a})`;
+    ctx.fill();
+  }
+}
+
+function drawMeteor(cx, cy, r, color, rot) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rot);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  const pts = 7;
+  for (let i = 0; i < pts; i++) {
+    const a  = (i / pts) * Math.PI * 2;
+    const rr = r * (0.72 + 0.28 * Math.sin(i * 2.5));
+    i === 0 ? ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr)
+            : ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  }
+  ctx.closePath();
+  ctx.fill();
+  // Highlight glint
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  ctx.beginPath();
+  ctx.arc(-r * 0.28, -r * 0.28, r * 0.28, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawPlayer() {
+  const flash = invTimer > 0 && Math.floor(invTimer * 8) % 2 === 0;
+  if (flash) return;
+  ctx.save();
+  ctx.translate(px, PLAYER_Y);
+
+  // Engine glow (flicker)
+  ctx.fillStyle = `rgba(240,192,48,${0.6 + Math.random() * 0.4})`;
+  ctx.beginPath();
+  ctx.arc(0, PLAYER_H / 2 + 4, 5 + Math.random() * 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body
+  ctx.fillStyle = '#a8dadc';
+  ctx.beginPath();
+  ctx.moveTo(0, -PLAYER_H / 2);
+  ctx.lineTo(PLAYER_W / 2, PLAYER_H / 2);
+  ctx.lineTo(-PLAYER_W / 2, PLAYER_H / 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Cockpit
+  ctx.fillStyle = '#0d0d1a';
+  ctx.beginPath();
+  ctx.arc(0, -2, 7, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Wing accent
+  ctx.strokeStyle = 'rgba(0,200,160,0.55)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-PLAYER_W / 2, PLAYER_H / 2);
+  ctx.lineTo(0, 0);
+  ctx.lineTo(PLAYER_W / 2, PLAYER_H / 2);
+  ctx.stroke();
+
+  // Shield bubble
+  if (shields > 0) {
+    ctx.strokeStyle = 'rgba(0,200,160,0.75)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, PLAYER_W / 2 + 8, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawHUD() {
+  // Score
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#e8eaf6';
+  ctx.font = 'bold 17px Segoe UI';
+  ctx.fillText('Score: ' + Math.floor(score), 14, 28);
+
+  // Gold
+  ctx.fillStyle = '#f0c030';
+  ctx.font = '13px Segoe UI';
+  ctx.fillText('Gold: ' + Math.floor(gold), 14, 48);
+
+  // Shield count
+  if (shields > 0) {
+    ctx.fillStyle = '#00c8a0';
+    ctx.fillText('Shield ×' + shields, 14, 66);
+  }
+
+  // Hearts
+  ctx.textAlign = 'right';
+  let hx = W - 10;
+  for (let i = 0; i < maxHearts; i++) {
+    ctx.fillStyle = i < hearts ? '#e94560' : 'rgba(233,69,96,0.22)';
+    ctx.font = '22px serif';
+    ctx.fillText('♥', hx, 30);
+    hx -= 28;
+  }
+}
+
+function drawGame() {
+  // Floor line
+  ctx.strokeStyle = 'rgba(168,218,220,0.12)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, PLAYER_Y + 22);
+  ctx.lineTo(W, PLAYER_Y + 22);
+  ctx.stroke();
+
+  // Particles
+  for (const p of particles) {
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Meteors
+  for (const m of meteors) drawMeteor(m.x, m.y, m.r, m.color, m.rot);
+
+  // Player
+  drawPlayer();
+
+  // HUD
+  drawHUD();
+}
+
+function drawTitle() {
+  ctx.fillStyle = 'rgba(0,0,0,0.38)';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.textAlign = 'center';
+
+  // Title
+  ctx.font = 'bold 62px Segoe UI';
+  ctx.fillStyle = '#e94560';
+  ctx.fillText('METEOR', W / 2, 215);
+  ctx.fillStyle = '#a8dadc';
+  ctx.fillText('DODGE', W / 2, 284);
+
+  // Divider
+  const g = ctx.createLinearGradient(80, 0, W - 80, 0);
+  g.addColorStop(0, 'transparent');
+  g.addColorStop(0.5, '#a8dadc');
+  g.addColorStop(1, 'transparent');
+  ctx.strokeStyle = g;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(80, 305); ctx.lineTo(W - 80, 305);
+  ctx.stroke();
+
+  // Controls
+  ctx.fillStyle = '#7986a8';
+  ctx.font = '15px Segoe UI';
+  ctx.fillText('Use  A / D  or  ← →  to dodge falling meteors', W / 2, 355);
+  ctx.fillText('Each hit removes a heart — survive as long as you can!', W / 2, 378);
+  ctx.fillText('When all hearts are lost, a shop opens with upgrades.', W / 2, 401);
+
+  // Start prompt pulse
+  const pulse = 0.55 + 0.45 * Math.sin(performance.now() / 430);
+  ctx.fillStyle = `rgba(240,192,48,${pulse})`;
+  ctx.font = 'bold 17px Segoe UI';
+  ctx.fillText('CLICK  or  SPACE  to start', W / 2, 465);
+}
+
+function drawShop() {
+  // Darken background
+  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Panel
+  ctx.fillStyle = '#0f1f3d';
+  ctx.strokeStyle = '#1a3a6a';
+  ctx.lineWidth = 2;
+  roundRect(28, 28, W - 56, H - 56, 16);
+  ctx.fill();
+  ctx.stroke();
+
+  // Header
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#e94560';
+  ctx.font = 'bold 30px Segoe UI';
+  ctx.fillText('SHOP', W / 2, 80);
+
+  ctx.fillStyle = '#7986a8';
+  ctx.font = '13px Segoe UI';
+  ctx.fillText('All hearts lost — buy upgrades and keep going!', W / 2, 106);
+
+  // Gold & score
+  ctx.fillStyle = '#f0c030';
+  ctx.font = 'bold 18px Segoe UI';
+  ctx.fillText('Gold: ' + Math.floor(gold), W / 2, 142);
+
+  ctx.fillStyle = '#7986a8';
+  ctx.font = '13px Segoe UI';
+  ctx.fillText('Score: ' + Math.floor(score), W / 2, 163);
+
+  // Divider
+  ctx.strokeStyle = 'rgba(26,58,106,0.8)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(48, 178); ctx.lineTo(W - 48, 178);
+  ctx.stroke();
+
+  // Items
+  SHOP.forEach((item, i) => {
+    const r       = shopRect(i);
+    const maxed   = item.getLevel() >= item.maxLvl() && item.maxLvl() !== Infinity;
+    const canBuy  = !maxed && item.canBuy() && Math.floor(gold) >= item.cost();
+    const locked  = maxed || (!item.canBuy());
+
+    // Background
+    ctx.fillStyle   = locked  ? '#090e1e' : (canBuy ? '#16213e' : '#0d1630');
+    ctx.strokeStyle = locked  ? '#1a1a3a' : (canBuy ? '#2a5090' : '#1a2a50');
+    ctx.lineWidth = 1.5;
+    roundRect(r.x, r.y, r.w, r.h, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    const cx  = r.x + r.w / 2;
+    const col = locked ? '#444' : (canBuy ? '#e8eaf6' : '#8898b8');
+
+    // Icon
+    ctx.font = '18px serif';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = locked ? '#333' : (canBuy ? '#fff' : '#778');
+    ctx.fillText(item.icon, r.x + 10, r.y + 26);
+
+    // Label
+    ctx.font = 'bold 13px Segoe UI';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = col;
+    ctx.fillText(item.label, r.x + 34, r.y + 24);
+
+    // Desc
+    ctx.font = '11px Segoe UI';
+    ctx.fillStyle = locked ? '#333' : '#7986a8';
+    ctx.fillText(item.desc(), r.x + 10, r.y + 47);
+
+    // Cost / Maxed
+    ctx.font = 'bold 13px Segoe UI';
+    ctx.textAlign = 'center';
+    if (maxed) {
+      ctx.fillStyle = '#3a3a5a';
+      ctx.fillText('MAXED', cx, r.y + 70);
+    } else if (locked && !maxed) {
+      // Can't buy reason: no hearts to revive, or no gold
+      ctx.fillStyle = '#3a3a5a';
+      ctx.fillText(Math.floor(gold) < item.cost() ? 'Not enough gold' : 'N/A', cx, r.y + 70);
+    } else {
+      ctx.fillStyle = canBuy ? '#f0c030' : '#6b5a20';
+      ctx.fillText(item.cost() + ' Gold', cx, r.y + 70);
+    }
+  });
+
+  // Continue / Restart button
+  const btnLabel = hearts > 0 ? 'Continue  →' : 'Restart  →';
+  const btnColor = hearts > 0 ? '#5a9449'     : '#e94560';
+  ctx.fillStyle = btnColor;
+  roundRect(CONT_X, CONT_Y, CONT_W, CONT_H, 22);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 15px Segoe UI';
+  ctx.textAlign = 'center';
+  ctx.fillText(btnLabel, W / 2, CONT_Y + 28);
+
+  // Note under button
+  ctx.fillStyle = '#3a4a6a';
+  ctx.font = '11px Segoe UI';
+  ctx.fillText(hearts > 0 ? 'Your score is preserved' : 'Score resets · gold & upgrades kept', W / 2, CONT_Y + CONT_H + 18);
+}
+
+// ── Main loop ─────────────────────────────────────────────────────────────
+function loop(ts) {
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+
+  update(dt);
+
+  // Draw
+  ctx.fillStyle = '#0d0d1a';
+  ctx.fillRect(0, 0, W, H);
+  drawStars();
+
+  if (state === 'title') {
+    drawTitle();
+  } else {
+    drawGame();
+    if (state === 'shop') drawShop();
+  }
+
+  requestAnimationFrame(loop);
+}
+
+lastTime = performance.now();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
