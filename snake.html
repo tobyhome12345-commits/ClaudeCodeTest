@@ -24,6 +24,43 @@
       transition: border-color 0.2s, color 0.2s;
     }
     #hub-btn:hover { border-color: #a8dadc; color: #fff; }
+
+    /* ── Mobile D-pad (touch devices only) ─────────────────── */
+    #m-dpad {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+    @media (pointer: coarse) { #m-dpad { display: flex; } }
+    .dpad-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+    }
+    .dpad-btn {
+      width: 68px; height: 68px;
+      background: rgba(192,132,252,0.18);
+      border: 2px solid rgba(192,132,252,0.5);
+      border-radius: 14px;
+      color: rgba(255,255,255,0.85);
+      font-size: 1.7rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .dpad-btn:active { background: rgba(192,132,252,0.42); }
+    .dpad-gap { width: 68px; height: 68px; }
   </style>
 </head>
 <body>
@@ -650,6 +687,32 @@ function loop(ts) {
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 requestAnimationFrame(ts => { lastTs = ts; requestAnimationFrame(loop); });
+
+// ─── Mobile D-pad ─────────────────────────────────────────────────────────────
+function mobileDir(name) {
+  if (state === 'dead')   { state = 'select'; return; }
+  if (state === 'paused') { state = 'playing'; return; }
+  if (state !== 'playing') return;
+  const cur = curDirName();
+  if (name !== cur && name !== OPP[cur]) pendDir = name;
+}
+['up','down','left','right'].forEach(d => {
+  const btn = document.getElementById('md-' + d);
+  if (!btn) return;
+  btn.addEventListener('touchstart', e => { e.preventDefault(); mobileDir(d); }, { passive: false });
+});
 </script>
+
+<!-- Mobile D-pad -->
+<div id="m-dpad">
+  <div class="dpad-row"><button class="dpad-btn" id="md-up">▲</button></div>
+  <div class="dpad-row">
+    <button class="dpad-btn" id="md-left">◀</button>
+    <div class="dpad-gap"></div>
+    <button class="dpad-btn" id="md-right">▶</button>
+  </div>
+  <div class="dpad-row"><button class="dpad-btn" id="md-down">▼</button></div>
+</div>
+
 </body>
 </html>

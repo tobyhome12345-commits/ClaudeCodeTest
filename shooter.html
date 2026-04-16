@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pixel Shooter</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -46,11 +47,43 @@
       border-color: #a8dadc;
       color: #fff;
     }
+
+    /* ── Mobile joystick (touch devices only) ─────────────────── */
+    #m-joystick {
+      display: none;
+      position: fixed;
+      bottom: 28px;
+      left: 28px;
+      z-index: 200;
+      width: 120px; height: 120px;
+      background: rgba(255,255,255,0.06);
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 50%;
+      touch-action: none;
+      user-select: none; -webkit-user-select: none;
+    }
+    #m-joystick-dot {
+      position: absolute;
+      width: 44px; height: 44px;
+      background: rgba(255,255,255,0.35);
+      border: 2px solid rgba(255,255,255,0.6);
+      border-radius: 50%;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: background 0.1s;
+    }
+    @media (pointer: coarse) {
+      #m-joystick { display: block; }
+      canvas { cursor: default; }
+    }
   </style>
 </head>
 <body>
 <a id="back-btn" href="index.html">&#8592; Hub</a>
 <canvas id="gameCanvas" width="800" height="600"></canvas>
+<!-- Mobile virtual joystick -->
+<div id="m-joystick"><div id="m-joystick-dot"></div></div>
 <script>
 // ============================================================
 // CONSTANTS
@@ -219,6 +252,14 @@ const ENEMY_SPRITES = { grunt: GRUNT_SPRITE, charger: CHARGER_SPRITE, tank: TANK
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
+
+function scaleCanvas() {
+  const s = Math.min(window.innerWidth / CANVAS_W, window.innerHeight / CANVAS_H);
+  canvas.style.width  = Math.floor(CANVAS_W * s) + 'px';
+  canvas.style.height = Math.floor(CANVAS_H * s) + 'px';
+}
+scaleCanvas();
+window.addEventListener('resize', scaleCanvas);
 
 // ============================================================
 // INPUT
@@ -1384,6 +1425,118 @@ function gameLoop(timestamp) {
 }
 
 requestAnimationFrame(ts => { game.lastTime = ts; requestAnimationFrame(gameLoop); });
+
+// ── Mobile touch controls ─────────────────────────────────────────────────────
+(function () {
+  // --- Canvas: right-half touch = aim + shoot ---
+  // Left ~40% reserved for joystick overlay
+  function canvasCoords(touch) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (touch.clientX - rect.left) * (CANVAS_W / rect.width),
+      y: (touch.clientY - rect.top)  * (CANVAS_H / rect.height),
+      screenFrac: (touch.clientX - rect.left) / rect.width,
+    };
+  }
+
+  const aimTouches = new Map(); // id → true
+
+  canvas.addEventListener('touchstart', e => {
+    if (game.state !== 'playing') return; // let click handler manage menus
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      const c = canvasCoords(t);
+      if (c.screenFrac >= 0.35) { // right side = aim/shoot
+        mouse.x = c.x; mouse.y = c.y;
+        mouse.down = true;
+        aimTouches.set(t.identifier, true);
+      }
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    if (game.state !== 'playing') return;
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (aimTouches.has(t.identifier)) {
+        const c = canvasCoords(t);
+        mouse.x = c.x; mouse.y = c.y;
+      }
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', e => {
+    for (const t of e.changedTouches) {
+      aimTouches.delete(t.identifier);
+    }
+    if (aimTouches.size === 0) mouse.down = false;
+  }, { passive: true });
+
+  canvas.addEventListener('touchcancel', e => {
+    aimTouches.clear(); mouse.down = false;
+  }, { passive: true });
+
+  // --- Virtual joystick (bottom-left) ---
+  const joy = document.getElementById('m-joystick');
+  const dot = document.getElementById('m-joystick-dot');
+  if (!joy) return;
+
+  const JOY_R = 60; // radius from center to max deflection
+  const DEAD  = 14; // dead zone radius
+  let joyActive = false;
+  let joyId     = null;
+  let joyOriginX = 0, joyOriginY = 0;
+
+  function updateJoyKeys(dx, dy) {
+    const THRESH = DEAD;
+    keys['KeyW'] = dy < -THRESH;
+    keys['KeyS'] = dy >  THRESH;
+    keys['KeyA'] = dx < -THRESH;
+    keys['KeyD'] = dx >  THRESH;
+  }
+
+  function clearJoyKeys() {
+    keys['KeyW'] = keys['KeyS'] = keys['KeyA'] = keys['KeyD'] = false;
+  }
+
+  joy.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    if (joyActive) return;
+    joyActive = true;
+    joyId = t.identifier;
+    const rect = joy.getBoundingClientRect();
+    joyOriginX = rect.left + rect.width  / 2;
+    joyOriginY = rect.top  + rect.height / 2;
+  }, { passive: false });
+
+  joy.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyId) continue;
+      let dx = t.clientX - joyOriginX;
+      let dy = t.clientY - joyOriginY;
+      // Clamp to joystick radius
+      const len = Math.sqrt(dx*dx + dy*dy);
+      if (len > JOY_R) { dx = dx/len*JOY_R; dy = dy/len*JOY_R; }
+      // Move dot visual
+      dot.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      updateJoyKeys(dx, dy);
+    }
+  }, { passive: false });
+
+  function joyEnd(e) {
+    for (const t of e.changedTouches) {
+      if (t.identifier === joyId) {
+        joyActive = false; joyId = null;
+        dot.style.transform = 'translate(-50%, -50%)';
+        clearJoyKeys();
+      }
+    }
+  }
+  joy.addEventListener('touchend',    joyEnd, { passive: true });
+  joy.addEventListener('touchcancel', joyEnd, { passive: true });
+})();
 </script>
 </body>
 </html>

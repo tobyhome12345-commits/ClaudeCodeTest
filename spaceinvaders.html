@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Space Invaders</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:#000; display:flex; justify-content:center; align-items:center; min-height:100vh; }
+body { background:#000; display:flex; justify-content:center; align-items:center; min-height:100vh; overflow:hidden; }
 canvas { display:block; image-rendering:pixelated; cursor:none; }
 #hub-btn {
   position: fixed; top: 14px; left: 14px;
@@ -17,11 +18,54 @@ canvas { display:block; image-rendering:pixelated; cursor:none; }
   transition: border-color 0.2s, color 0.2s;
 }
 #hub-btn:hover { border-color: #00ff88; color: #fff; }
+
+/* ── Mobile controls ─────────────────────────────────────── */
+#m-ctrl {
+  display: none;
+  position: fixed; bottom: 20px; left: 0; right: 0;
+  z-index: 100;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 24px;
+  pointer-events: none;
+}
+@media (pointer: coarse) { #m-ctrl { display: flex; } }
+.m-btn {
+  pointer-events: all;
+  width: 76px; height: 76px;
+  background: rgba(0,255,136,0.12);
+  border: 2px solid rgba(0,255,136,0.45);
+  border-radius: 14px;
+  color: rgba(0,255,136,0.9);
+  font-size: 2rem;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: none;
+  user-select: none; -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.m-btn:active { background: rgba(0,255,136,0.32); }
+#m-fire {
+  width: 88px; height: 88px;
+  background: rgba(233,69,96,0.15);
+  border-color: rgba(233,69,96,0.55);
+  color: rgba(255,100,120,0.95);
+  font-size: 1rem; font-weight: 800;
+  letter-spacing: 1px;
+}
+#m-fire:active { background: rgba(233,69,96,0.38); }
 </style>
 </head>
 <body>
 <a id="hub-btn" href="index.html">&#8592; Hub</a>
 <canvas id="c"></canvas>
+
+<!-- Mobile controls -->
+<div id="m-ctrl">
+  <button class="m-btn" id="m-left">◀</button>
+  <button class="m-btn" id="m-fire">FIRE</button>
+  <button class="m-btn" id="m-right">▶</button>
+</div>
+
 <script>
 'use strict';
 
@@ -29,6 +73,14 @@ const C   = document.getElementById('c');
 const ctx = C.getContext('2d');
 const W   = 800, H = 700;
 C.width = W; C.height = H;
+
+function scaleCanvas() {
+  const s = Math.min(window.innerWidth / W, window.innerHeight / H);
+  C.style.width  = Math.floor(W * s) + 'px';
+  C.style.height = Math.floor(H * s) + 'px';
+}
+scaleCanvas();
+window.addEventListener('resize', scaleCanvas);
 
 // ─────────────────────────────────────────────────────────────
 // SPRITES  (0 = transparent, 1 = solid)
@@ -973,6 +1025,66 @@ plShootT     = 0;
 resetUps();
 
 requestAnimationFrame(ts => { lastTime = ts; requestAnimationFrame(loop); });
+
+// ── Mobile touch controls ─────────────────────────────────────────────────────
+(function () {
+  const ml = document.getElementById('m-left');
+  const mr = document.getElementById('m-right');
+  const mf = document.getElementById('m-fire');
+  if (!ml) return;
+
+  // Left button — move left
+  ml.addEventListener('touchstart', e => { e.preventDefault(); keys['ArrowLeft'] = true; }, { passive: false });
+  ml.addEventListener('touchend',   e => { e.preventDefault(); keys['ArrowLeft'] = false; }, { passive: false });
+  ml.addEventListener('touchcancel',e => { keys['ArrowLeft'] = false; });
+
+  // Right button — move right
+  mr.addEventListener('touchstart', e => { e.preventDefault(); keys['ArrowRight'] = true; }, { passive: false });
+  mr.addEventListener('touchend',   e => { e.preventDefault(); keys['ArrowRight'] = false; }, { passive: false });
+  mr.addEventListener('touchcancel',e => { keys['ArrowRight'] = false; });
+
+  // Fire button — shoot / confirm menus / navigate shop
+  mf.addEventListener('touchstart', e => {
+    e.preventDefault();
+    keys['Space'] = true;
+    jp['Space']   = true;
+  }, { passive: false });
+  mf.addEventListener('touchend', e => {
+    e.preventDefault();
+    keys['Space'] = false;
+  }, { passive: false });
+
+  // Canvas tap — for menu screens, advance with Space; for shop, tap an item to buy
+  C.addEventListener('touchstart', e => {
+    // Don't handle during active gameplay (let buttons do the work)
+    if (state === 'playing') return;
+    const t = e.changedTouches[0];
+    const rect = C.getBoundingClientRect();
+    const scale = W / rect.width;
+    const cy = (t.clientY - rect.top) * scale;
+
+    if (state === 'shop') {
+      // Tap on a shop item row to select it, double-tap to buy
+      const IH = 58, IY0 = 76;
+      const idx = Math.floor((cy - IY0) / IH);
+      if (idx >= 0 && idx < shopItems.length) {
+        if (shopCursor === idx) {
+          jp['Space'] = true; // buy selected item
+        } else {
+          shopCursor = idx;   // first tap selects
+        }
+      } else {
+        // Tap footer or elsewhere → exit shop
+        jp['Escape'] = true;
+      }
+    } else {
+      // title / gameover / wavecomplete
+      jp['Space'] = true;
+      keys['Space'] = true;
+      setTimeout(() => { keys['Space'] = false; }, 80);
+    }
+  }, { passive: true });
+})();
 </script>
 </body>
 </html>

@@ -177,6 +177,63 @@
       opacity: 0; transition: opacity 0.4s; z-index: 60;
     }
     #quest-toast.show { opacity: 1; }
+
+    /* ── Mobile controls (touch devices only) ─────────────────── */
+    #m-joy-wrap {
+      display: none;
+      position: fixed; bottom: 24px; left: 24px;
+      z-index: 200;
+      width: 120px; height: 120px;
+      background: rgba(255,255,255,0.05);
+      border: 2px solid rgba(255,255,255,0.18);
+      border-radius: 50%;
+      touch-action: none;
+      user-select: none; -webkit-user-select: none;
+    }
+    #m-joy-dot {
+      position: absolute;
+      width: 44px; height: 44px;
+      background: rgba(90,148,73,0.5);
+      border: 2px solid rgba(90,148,73,0.85);
+      border-radius: 50%;
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      pointer-events: none;
+    }
+    #m-action-btns {
+      display: none;
+      position: fixed; bottom: 24px; right: 20px;
+      z-index: 200;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+    }
+    .m-act-btn {
+      padding: 0 16px;
+      height: 52px;
+      background: rgba(168,218,220,0.12);
+      border: 2px solid rgba(168,218,220,0.45);
+      border-radius: 26px;
+      color: rgba(168,218,220,0.9);
+      font-size: 0.82rem; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+      display: flex; align-items: center; justify-content: center;
+      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none; -webkit-user-select: none;
+      white-space: nowrap;
+    }
+    .m-act-btn:active { background: rgba(168,218,220,0.32); }
+    #m-sprint-btn {
+      background: rgba(240,192,48,0.12);
+      border-color: rgba(240,192,48,0.45);
+      color: rgba(240,192,48,0.9);
+    }
+    #m-sprint-btn:active, #m-sprint-btn.held { background: rgba(240,192,48,0.35); }
+    @media (pointer: coarse) {
+      #m-joy-wrap    { display: block; }
+      #m-action-btns { display: flex; }
+    }
   </style>
 </head>
 <body>
@@ -227,6 +284,16 @@
 
 <div id="quest-toast"></div>
 <canvas id="canvas"></canvas>
+
+<!-- Mobile joystick -->
+<div id="m-joy-wrap"><div id="m-joy-dot"></div></div>
+
+<!-- Mobile action buttons -->
+<div id="m-action-btns">
+  <button class="m-act-btn" id="m-sprint-btn">SPRINT</button>
+  <button class="m-act-btn" id="m-e-btn">E — Interact</button>
+  <button class="m-act-btn" id="m-f-btn">F — Talk</button>
+</div>
 
 <script>
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -1475,6 +1542,88 @@ function loop(ts) {
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(ts=>{ lastTime=ts; requestAnimationFrame(loop); });
+
+// ── Mobile touch controls ─────────────────────────────────────────────────────
+(function () {
+  const joy = document.getElementById('m-joy-wrap');
+  const dot = document.getElementById('m-joy-dot');
+  const eSpr = document.getElementById('m-sprint-btn');
+  const eBtn = document.getElementById('m-e-btn');
+  const fBtn = document.getElementById('m-f-btn');
+  if (!joy) return;
+
+  // --- Virtual joystick ---
+  const JOY_R = 60, DEAD = 14;
+  let joyId = null, joyOX = 0, joyOY = 0;
+
+  function setMoveKeys(dx, dy) {
+    keys['w'] = dy < -DEAD; keys['s'] = dy > DEAD;
+    keys['a'] = dx < -DEAD; keys['d'] = dx > DEAD;
+  }
+  function clearMoveKeys() {
+    keys['w'] = keys['s'] = keys['a'] = keys['d'] = false;
+  }
+
+  joy.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (joyId !== null) return;
+    const t = e.changedTouches[0];
+    joyId = t.identifier;
+    const r = joy.getBoundingClientRect();
+    joyOX = r.left + r.width  / 2;
+    joyOY = r.top  + r.height / 2;
+  }, { passive: false });
+
+  joy.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier !== joyId) continue;
+      let dx = t.clientX - joyOX, dy = t.clientY - joyOY;
+      const len = Math.sqrt(dx*dx + dy*dy);
+      if (len > JOY_R) { dx = dx/len*JOY_R; dy = dy/len*JOY_R; }
+      dot.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      setMoveKeys(dx, dy);
+    }
+  }, { passive: false });
+
+  function joyEnd(e) {
+    for (const t of e.changedTouches) {
+      if (t.identifier === joyId) {
+        joyId = null;
+        dot.style.transform = 'translate(-50%,-50%)';
+        clearMoveKeys();
+      }
+    }
+  }
+  joy.addEventListener('touchend',    joyEnd, { passive: true });
+  joy.addEventListener('touchcancel', joyEnd, { passive: true });
+
+  // --- Sprint button ---
+  eSpr.addEventListener('touchstart', e => {
+    e.preventDefault();
+    keys['shift'] = true;
+    eSpr.classList.add('held');
+  }, { passive: false });
+  eSpr.addEventListener('touchend',    e => { keys['shift'] = false; eSpr.classList.remove('held'); });
+  eSpr.addEventListener('touchcancel', e => { keys['shift'] = false; eSpr.classList.remove('held'); });
+
+  // --- E (Interact) button ---
+  eBtn.addEventListener('touchstart', e => {
+    e.preventDefault();
+    ePressed = true;
+  }, { passive: false });
+
+  // --- F (Talk/Continue) button ---
+  fBtn.addEventListener('touchstart', e => {
+    e.preventDefault();
+    fPressed = true;
+  }, { passive: false });
+
+  // Prevent default scroll on canvas area when mobile controls are active
+  document.getElementById('canvas').addEventListener('touchmove', e => {
+    e.preventDefault();
+  }, { passive: false });
+})();
 </script>
 </body>
 </html>
