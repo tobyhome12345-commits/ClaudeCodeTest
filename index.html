@@ -302,6 +302,52 @@
       pointer-events: none;
     }
 
+    /* ── Neon series badge ───────────────────────────────────── */
+    .neon-badge {
+      position: absolute;
+      top: 12px; left: 12px;
+      background: linear-gradient(135deg, #c084fc, #38bdf8);
+      color: #fff;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: 0.26rem 0.72rem;
+      border-radius: 20px;
+      text-transform: uppercase;
+      z-index: 2;
+      box-shadow: 0 0 14px rgba(192,132,252,0.5);
+      pointer-events: none;
+    }
+
+    /* ── Series sub-headings ─────────────────────────────────── */
+    .series-label {
+      max-width: 1300px;
+      margin: 0 auto 1.4rem;
+      padding: 0 0.4rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .series-label.neon-series-label {
+      color: var(--purple);
+      text-shadow: 0 0 18px rgba(192,132,252,0.5);
+    }
+
+    /* ── Series divider ──────────────────────────────────────── */
+    .series-divider {
+      max-width: 1300px;
+      margin: 3rem auto 2.8rem;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border), transparent);
+    }
+
+    /* ── Neon grid highlight border ──────────────────────────── */
+    .neon-grid .game-card {
+      border-color: rgba(192,132,252,0.18);
+    }
+
     /* ── Responsive tweaks ───────────────────────────────────── */
     @media (max-width: 500px) {
       header { padding: 2.5rem 1rem 1.8rem; }
@@ -327,12 +373,15 @@
   <section class="games-section">
     <p class="section-label">Choose your game</p>
 
-    <div class="games-grid" style="max-width:1300px">
+    <!-- ── Neon Series ──────────────────────────────── -->
+    <p class="series-label neon-series-label">✦ Neon Series</p>
+    <div class="games-grid neon-grid" style="max-width:1300px">
 
-      <!-- Neon Breakout card — POPULAR -->
+      <!-- Neon Breakout — POPULAR -->
       <a class="game-card purple" href="breakout.html">
         <div class="card-glow"></div>
         <div class="card-preview">
+          <div class="neon-badge">Neon</div>
           <div class="popular-badge">⭐ Popular!</div>
           <div class="card-icon">🧱</div>
         </div>
@@ -353,6 +402,89 @@
           <div class="card-btn">Play Now</div>
         </div>
       </a>
+
+      <!-- Neon Dash -->
+      <a class="game-card teal" href="neondash.html">
+        <div class="card-glow"></div>
+        <div class="card-preview">
+          <div class="neon-badge">Neon</div>
+          <div class="card-icon">🟦</div>
+        </div>
+        <div class="card-body">
+          <span class="card-tag">Arcade · Endless Runner</span>
+          <h2 class="card-title">Neon Dash</h2>
+          <p class="card-desc">
+            A neon cube tears through an endless obstacle course — jump over spikes,
+            leap gaps, duck ceiling traps. Double-jump to survive. Speed never stops
+            climbing. How far can you go?
+          </p>
+          <div class="card-features">
+            <span class="pill">Double jump</span>
+            <span class="pill">Speed ramps</span>
+            <span class="pill">Best score</span>
+            <span class="pill">One tap</span>
+          </div>
+          <div class="card-btn">Play Now</div>
+        </div>
+      </a>
+
+      <!-- Neon Stack -->
+      <a class="game-card purple" href="stack.html">
+        <div class="card-glow"></div>
+        <div class="card-preview">
+          <div class="neon-badge">Neon</div>
+          <div class="card-icon">🟪</div>
+        </div>
+        <div class="card-body">
+          <span class="card-tag">Arcade · Precision</span>
+          <h2 class="card-title">Neon Stack</h2>
+          <p class="card-desc">
+            Drop sliding neon blocks onto the stack below. Land perfectly to keep your
+            width — miss and it gets cut. Speed ramps with every drop. How high can
+            you build before the tower falls?
+          </p>
+          <div class="card-features">
+            <span class="pill">One tap</span>
+            <span class="pill">Perfect combos</span>
+            <span class="pill">Speed ramps</span>
+            <span class="pill">Touch friendly</span>
+          </div>
+          <div class="card-btn">Play Now</div>
+        </div>
+      </a>
+
+      <!-- Neon Crosser -->
+      <a class="game-card red" href="asteroids.html">
+        <div class="card-glow"></div>
+        <div class="card-preview">
+          <div class="neon-badge">Neon</div>
+          <div class="card-icon">🚗</div>
+        </div>
+        <div class="card-body">
+          <span class="card-tag">Arcade · Dodge &amp; Cross</span>
+          <h2 class="card-title">Neon Crosser</h2>
+          <p class="card-desc">
+            Dodge speeding neon traffic and reach the goal. Choose Easy, Medium, or
+            Hard — each ramps up speed and car density as levels climb. Hard strips
+            away the safe median entirely.
+          </p>
+          <div class="card-features">
+            <span class="pill">3 difficulties</span>
+            <span class="pill">Infinite levels</span>
+            <span class="pill">Best scores saved</span>
+            <span class="pill">Arrow + Touch</span>
+          </div>
+          <div class="card-btn">Play Now</div>
+        </div>
+      </a>
+
+    </div>
+
+    <div class="series-divider"></div>
+
+    <!-- ── All Games ────────────────────────────────── -->
+    <p class="series-label">All Games</p>
+    <div class="games-grid" style="max-width:1300px">
 
       <!-- Shooter card -->
       <a class="game-card red" href="shooter.html">
@@ -609,78 +741,6 @@
             <span class="pill">7 speed levels</span>
             <span class="pill">Bonus food</span>
             <span class="pill">Best score</span>
-            <span class="pill">Arrow + Touch</span>
-          </div>
-          <div class="card-btn">Play Now</div>
-        </div>
-      </a>
-
-      <!-- Neon Dash card -->
-      <a class="game-card teal" href="neondash.html">
-        <div class="card-glow"></div>
-        <div class="card-preview">
-          <div class="card-icon">🟦</div>
-        </div>
-        <div class="card-body">
-          <span class="card-tag">Arcade · Endless Runner</span>
-          <h2 class="card-title">Neon Dash</h2>
-          <p class="card-desc">
-            A neon cube tears through an endless obstacle course — jump over spikes,
-            leap gaps, duck ceiling traps. Double-jump to survive. Speed never stops
-            climbing. How far can you go?
-          </p>
-          <div class="card-features">
-            <span class="pill">Double jump</span>
-            <span class="pill">Speed ramps</span>
-            <span class="pill">Best score</span>
-            <span class="pill">One tap</span>
-          </div>
-          <div class="card-btn">Play Now</div>
-        </div>
-      </a>
-
-      <!-- Neon Stack card -->
-      <a class="game-card purple" href="stack.html">
-        <div class="card-glow"></div>
-        <div class="card-preview">
-          <div class="card-icon">🟪</div>
-        </div>
-        <div class="card-body">
-          <span class="card-tag">Arcade · Precision</span>
-          <h2 class="card-title">Neon Stack</h2>
-          <p class="card-desc">
-            Drop sliding neon blocks onto the stack below. Land perfectly to keep your
-            width — miss and it gets cut. Speed ramps with every drop. How high can
-            you build before the tower falls?
-          </p>
-          <div class="card-features">
-            <span class="pill">One tap</span>
-            <span class="pill">Perfect combos</span>
-            <span class="pill">Speed ramps</span>
-            <span class="pill">Touch friendly</span>
-          </div>
-          <div class="card-btn">Play Now</div>
-        </div>
-      </a>
-
-      <!-- Neon Crosser card -->
-      <a class="game-card red" href="asteroids.html">
-        <div class="card-glow"></div>
-        <div class="card-preview">
-          <div class="card-icon">🚗</div>
-        </div>
-        <div class="card-body">
-          <span class="card-tag">Arcade · Dodge &amp; Cross</span>
-          <h2 class="card-title">Neon Crosser</h2>
-          <p class="card-desc">
-            Dodge speeding neon traffic and reach the goal. Choose Easy, Medium, or
-            Hard — each ramps up speed and car density as levels climb. Hard strips
-            away the safe median entirely.
-          </p>
-          <div class="card-features">
-            <span class="pill">3 difficulties</span>
-            <span class="pill">Infinite levels</span>
-            <span class="pill">Best scores saved</span>
             <span class="pill">Arrow + Touch</span>
           </div>
           <div class="card-btn">Play Now</div>
