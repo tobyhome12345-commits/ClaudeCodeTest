@@ -60,8 +60,8 @@ const BRICK_TOP = 68;
 const BASE_SPD  = 310;
 const MAX_LIVES = 5;
 
-const HP_COL  = ['', '#00c8a0', '#f0c030', '#e94560'];
-const HP_GLOW = ['', 'rgba(0,200,160,.55)', 'rgba(240,192,48,.5)', 'rgba(233,69,96,.6)'];
+const HP_COL  = ['', '#00c8a0', '#f0c030', '#e94560', '#ff7c20', '#ff40d0'];
+const HP_GLOW = ['', 'rgba(0,200,160,.55)', 'rgba(240,192,48,.5)', 'rgba(233,69,96,.6)', 'rgba(255,124,32,.65)', 'rgba(255,64,208,.7)'];
 const PU_COL  = { W:'#c084fc', S:'#a8dadc', '+':'#00c8a0', M:'#f0c030', L:'#e94560' };
 const PU_LBL  = { W:'WIDE', S:'SLOW', '+':'1UP', M:'×3', L:'LASER' };
 const PU_DUR  = { W:13000, S:11000, L:11000 };
@@ -90,6 +90,8 @@ const sfx = {
   brick1:   () => tone(300,  .08, .13, 'square'),
   brick2:   () => tone(230,  .09, .14, 'square'),
   brick3:   () => tone(160,  .1,  .15, 'sawtooth'),
+  brick4:   () => tone(110,  .11, .16, 'sawtooth'),
+  brick5:   () => tone(75,   .12, .18, 'sawtooth'),
   powerup:  () => { tone(880,.10,.14,'sine'); tone(1100,.14,.14,'sine',.08); },
   laser:    () => tone(1600, .07, .1,  'sawtooth'),
   lost:     () => { tone(280,.15,.2,'sawtooth'); tone(190,.3,.18,'sawtooth',.14); },
@@ -192,6 +194,31 @@ const LEVELS = [
    [3,3,3,3,3,3,3,3]],
 ];
 
+// 13 — MEGA (unlocks after 2 full loops)
+const MEGA_LEVEL =
+  [[5,5,5,5,5,5,5,5],
+   [5,5,5,5,5,5,5,5],
+   [5,5,5,5,5,5,5,5],
+   [5,5,5,5,5,5,5,5],
+   [5,5,5,5,5,5,5,5]];
+
+// Returns { pat, isMega, displayNum } for a given levelIdx
+function levelInfo(idx) {
+  const N = LEVELS.length; // 12
+  if (idx < N * 2) {
+    // First two loops: just regular 12
+    return { pat: LEVELS[idx % N], isMega: false, displayNum: idx + 1 };
+  }
+  // From loop 2 onward: 13-level cycle (12 regular + mega)
+  const pos = (idx - N * 2) % (N + 1);
+  const isMega = pos === N;
+  return {
+    pat: isMega ? MEGA_LEVEL : LEVELS[pos],
+    isMega,
+    displayNum: idx + 1,
+  };
+}
+
 // ── Game state ────────────────────────────────────────────────────────
 let gs, lives, score, hiScore, levelIdx;
 let paddle, balls, bricks, pups, parts, lasers;
@@ -211,7 +238,7 @@ function startGame() {
 }
 
 function loadLevel() {
-  const pat = LEVELS[levelIdx % LEVELS.length];
+  const { pat } = levelInfo(levelIdx);
   bricks = [];
   pat.forEach((row, r) => row.forEach((hp, c) => {
     if (!hp) return;
@@ -245,7 +272,10 @@ function launch(b) {
 }
 
 function getSpd() {
-  const cyc = Math.floor(levelIdx / LEVELS.length);
+  const N = LEVELS.length;
+  const cyc = levelIdx < N * 2
+    ? Math.floor(levelIdx / N)
+    : 2 + Math.floor((levelIdx - N * 2) / (N + 1));
   return BASE_SPD + levelIdx * 18 + cyc * 30;
 }
 
@@ -391,11 +421,15 @@ function update(dt, now) {
 
 function hitBrick(brick, now) {
   brick.hp--;
-  sfx['brick' + brick.maxHp]();
+  sfx['brick' + Math.min(brick.maxHp, 5)]();
   spawnParticles(brick.x + brick.w/2, brick.y + brick.h/2, HP_COL[brick.maxHp]);
   if (brick.hp <= 0) {
     brick.active = false;
-    score += brick.maxHp * 10 * (1 + Math.floor(levelIdx / LEVELS.length));
+    const N = LEVELS.length;
+    const cyc = levelIdx < N * 2
+      ? Math.floor(levelIdx / N)
+      : 2 + Math.floor((levelIdx - N * 2) / (N + 1));
+    score += brick.maxHp * 10 * (1 + cyc);
     if (Math.random() < 0.13) {
       const types = ['W','S','+','M','L'];
       pups.push({ x: brick.x + brick.w/2, y: brick.y + brick.h/2, type: types[Math.floor(Math.random()*5)] });
@@ -503,14 +537,23 @@ function drawGameScene(now) {
     ctx.lineWidth   = 1.5;
     ctx.strokeRect(b.x+0.75, b.y+0.75, b.w-1.5, b.h-1.5);
     ctx.shadowBlur = 0;
-    // HP pips
+    // HP indicator — dots for ≤3, number for ≥4
     if (b.maxHp > 1) {
-      ctx.fillStyle   = col;
-      ctx.globalAlpha = 0.7;
-      for (let i = 0; i < b.hp; i++) {
-        ctx.beginPath();
-        ctx.arc(b.x + b.w/2 - (b.maxHp-1)*4.5 + i*9, b.y + b.h/2, 2.2, 0, Math.PI*2);
-        ctx.fill();
+      ctx.globalAlpha = 0.75;
+      if (b.maxHp <= 3) {
+        ctx.fillStyle = col;
+        for (let i = 0; i < b.hp; i++) {
+          ctx.beginPath();
+          ctx.arc(b.x + b.w/2 - (b.maxHp-1)*4.5 + i*9, b.y + b.h/2, 2.2, 0, Math.PI*2);
+          ctx.fill();
+        }
+      } else {
+        ctx.fillStyle    = col;
+        ctx.font         = 'bold 11px monospace';
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(b.hp, b.x + b.w/2, b.y + b.h/2);
+        ctx.textBaseline = 'top';
       }
       ctx.globalAlpha = 1;
     }
@@ -665,11 +708,21 @@ function drawHUD(now) {
   ctx.fillText(score.toLocaleString(), 12, 26);
 
   // Level
-  ctx.fillStyle = '#7986a8'; ctx.font = '9px "Segoe UI"';
+  const { isMega } = levelInfo(levelIdx);
   ctx.textAlign = 'center';
-  ctx.fillText('LEVEL', CW/2, 14);
-  ctx.fillStyle = '#c084fc'; ctx.font = 'bold 17px "Segoe UI"';
-  ctx.fillText(levelIdx + 1, CW/2, 26);
+  if (isMega) {
+    ctx.fillStyle = '#ff40d0'; ctx.font = '9px "Segoe UI"';
+    ctx.fillText('LEVEL', CW/2, 14);
+    ctx.shadowColor = '#ff40d0'; ctx.shadowBlur = 10;
+    ctx.fillStyle = '#ff40d0'; ctx.font = 'bold 13px "Segoe UI"';
+    ctx.fillText('MEGA!', CW/2, 26);
+    ctx.shadowBlur = 0;
+  } else {
+    ctx.fillStyle = '#7986a8'; ctx.font = '9px "Segoe UI"';
+    ctx.fillText('LEVEL', CW/2, 14);
+    ctx.fillStyle = '#c084fc'; ctx.font = 'bold 17px "Segoe UI"';
+    ctx.fillText(levelIdx + 1, CW/2, 26);
+  }
 
   // Lives (hearts)
   ctx.fillStyle = '#7986a8'; ctx.font = '9px "Segoe UI"';
@@ -825,13 +878,19 @@ function drawLevelClear() {
   ctx.fillStyle = 'rgba(13,13,26,0.75)';
   ctx.fillRect(0, 0, CW, CH);
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#00c8a0'; ctx.shadowColor = '#00c8a0'; ctx.shadowBlur = 22;
+  const isMegaClear = levelInfo(levelIdx).isMega;
+  const clearCol = isMegaClear ? '#ff40d0' : '#00c8a0';
+  ctx.fillStyle = clearCol; ctx.shadowColor = clearCol; ctx.shadowBlur = 22;
   ctx.font = 'bold 52px "Segoe UI"'; ctx.textBaseline = 'top';
-  ctx.fillText('LEVEL', CW/2, CH/2 - 80);
+  ctx.fillText(isMegaClear ? 'MEGA' : 'LEVEL', CW/2, CH/2 - 80);
   ctx.fillText('CLEAR!', CW/2, CH/2 - 18);
   ctx.shadowBlur = 0;
+  if (isMegaClear) {
+    ctx.fillStyle = '#ff40d0'; ctx.font = 'bold 13px "Segoe UI"';
+    ctx.fillText('YOU CONQUERED THE MEGA LEVEL!', CW/2, CH/2 + 40);
+  }
   ctx.fillStyle = '#7986a8'; ctx.font = '14px "Segoe UI"';
-  ctx.fillText('Tap or click to continue', CW/2, CH/2 + 55);
+  ctx.fillText('Tap or click to continue', CW/2, CH/2 + (isMegaClear ? 62 : 55));
   ctx.textBaseline = 'alphabetic';
 }
 
@@ -847,7 +906,11 @@ function rrect(x, y, w, h, r) {
 }
 
 function hpRgb(hp) {
-  return hp === 1 ? '0,200,160' : hp === 2 ? '240,192,48' : '233,69,96';
+  if (hp === 1) return '0,200,160';
+  if (hp === 2) return '240,192,48';
+  if (hp === 3) return '233,69,96';
+  if (hp === 4) return '255,124,32';
+  return '255,64,208';
 }
 
 function hexRgb(hex) {
