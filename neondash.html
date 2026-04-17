@@ -291,12 +291,13 @@ function update(dt) {
   dist += worldSpd * dt;
   score = Math.floor(dist / 10);
 
-  // Scroll obstacles
+  // Scroll obstacles and spawn marker together
   for (const ob of obstacles) ob.x -= worldSpd * dt;
   obstacles = obstacles.filter(ob => ob.x > -300);
+  nextObstX -= worldSpd * dt;
 
-  // Spawn next
-  if (nextObstX - worldSpd * dt < W + 200) spawnObstacle();
+  // Spawn next when marker scrolls into the right-side buffer
+  if (nextObstX < W + 200) spawnObstacle();
 
   // Cube physics
   cube.vy += GRAVITY * dt;
@@ -547,23 +548,6 @@ function drawHUD(theme) {
       ctx.stroke();
     }
   }
-
-  // Speed bar (left)
-  const speedFrac = Math.min(1, (worldSpd - INIT_SPD) / (MAX_SPD - INIT_SPD));
-  const bw = 80, bh = 5;
-  const bx = 16, by = 56;
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = 'rgba(255,255,255,0.07)';
-  rrect(bx, by, bw, bh, 3); ctx.fill();
-  ctx.fillStyle = theme.cube;
-  ctx.shadowColor = theme.cube;
-  ctx.shadowBlur = 6;
-  if (speedFrac > 0) { rrect(bx, by, bw * speedFrac, bh, 3); ctx.fill(); }
-  ctx.shadowBlur = 0;
-  ctx.font = '9px Segoe UI';
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#7986a8';
-  ctx.fillText('SPEED', bx, by - 2);
 
   ctx.restore();
 }
