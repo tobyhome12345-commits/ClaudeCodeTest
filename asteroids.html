@@ -2,445 +2,528 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Neon Asteroids</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon Crosser</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000011; overflow: hidden; width: 100vw; height: 100vh; font-family: monospace; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d0d1a;
+      display: flex; align-items: center; justify-content: center;
+      height: 100vh; overflow: hidden;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      user-select: none;
+    }
     canvas { display: block; }
-    #overlay {
-      position: fixed; inset: 0;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 18px;
-      background: rgba(0,0,0,0.82);
-      color: #0ff; font-family: monospace; z-index: 20;
+
+    #hub-btn {
+      position: fixed; top: 14px; left: 14px;
+      background: rgba(13,13,26,0.85); color: #a8dadc;
+      border: 1px solid #1a3a6a; border-radius: 20px;
+      padding: 0.4rem 1rem; font-size: 0.8rem; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+      text-decoration: none; z-index: 10;
+      transition: border-color 0.2s, color 0.2s;
     }
-    #overlay h1 {
-      font-size: clamp(2.2rem, 8vw, 3.5rem);
-      letter-spacing: 10px;
-      text-shadow: 0 0 30px #0ff, 0 0 60px rgba(0,255,255,0.3);
+    #hub-btn:hover { border-color: #a8dadc; color: #fff; }
+
+    /* ── Mobile D-pad (touch only) ──────────────────────────── */
+    #m-dpad {
+      display: none;
+      position: fixed; bottom: 18px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      flex-direction: column; align-items: center; gap: 5px;
+      pointer-events: none;
     }
-    #overlay .edition { color: #c084fc; font-size: 0.8rem; letter-spacing: 5px; margin-top: -10px; }
-    #overlay .controls {
-      color: #aaa; font-size: 0.82rem; line-height: 2.2;
-      text-align: center; border: 1px solid #1a3a6a;
-      padding: 1rem 2rem; border-radius: 10px;
-      background: rgba(0,0,50,0.4);
+    @media (pointer: coarse) { #m-dpad { display: flex; } }
+    .dpad-row { display: flex; align-items: center; gap: 5px; }
+    .dpad-btn {
+      pointer-events: all;
+      width: 72px; height: 72px;
+      background: rgba(0,200,160,0.14);
+      border: 2px solid rgba(0,200,160,0.5);
+      border-radius: 16px;
+      color: rgba(255,255,255,0.88);
+      font-size: 1.9rem;
+      display: flex; align-items: center; justify-content: center;
+      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+      cursor: pointer;
     }
-    #overlay .controls span { color: #0ff; }
-    .btn {
-      background: transparent; border: 2px solid #0ff;
-      color: #0ff; font-family: monospace; font-size: 0.95rem;
-      padding: 0.65rem 2.4rem; cursor: pointer; letter-spacing: 3px;
-      text-transform: uppercase;
-      transition: all 0.2s; border-radius: 4px;
-    }
-    .btn:hover { background: rgba(0,255,255,0.12); box-shadow: 0 0 24px rgba(0,255,255,0.5); }
-    #overlay.hidden { display: none; }
-    #home {
-      position: fixed; bottom: 18px; left: 18px;
-      color: #444; font-size: 0.7rem; letter-spacing: 1px;
-      text-decoration: none; z-index: 30;
-      transition: color 0.2s;
-    }
-    #home:hover { color: #0ff; }
+    .dpad-btn:active { background: rgba(0,200,160,0.34); }
+    .dpad-gap { width: 72px; height: 72px; }
   </style>
 </head>
 <body>
-<canvas id="c"></canvas>
 
-<div id="overlay">
-  <h1>ASTEROIDS</h1>
-  <div class="edition">NEON EDITION</div>
-  <div class="controls">
-    <span>← →</span> &nbsp; Rotate &nbsp;&nbsp;&nbsp; <span>↑ / W</span> &nbsp; Thrust<br>
-    <span>SPACE</span> &nbsp; Fire &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span>P</span> &nbsp;&nbsp;&nbsp;&nbsp; Pause
+<a id="hub-btn" href="index.html">&#8592; Hub</a>
+<canvas id="canvas"></canvas>
+
+<div id="m-dpad">
+  <div class="dpad-row">
+    <button class="dpad-btn" id="m-up">▲</button>
   </div>
-  <button class="btn" id="startBtn">LAUNCH</button>
+  <div class="dpad-row">
+    <button class="dpad-btn" id="m-left">◀</button>
+    <div class="dpad-gap"></div>
+    <button class="dpad-btn" id="m-right">▶</button>
+  </div>
+  <div class="dpad-row">
+    <button class="dpad-btn" id="m-down">▼</button>
+  </div>
 </div>
 
-<a id="home" href="index.html">← GAME HUB</a>
-
 <script>
-const canvas  = document.getElementById('c');
-const ctx     = canvas.getContext('2d');
-const overlay = document.getElementById('overlay');
+// ── Canvas / scaling ─────────────────────────────────────────────
+const W = 480, H = 640;
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+canvas.width  = W;
+canvas.height = H;
 
-// ── Resize ──────────────────────────────────────────────────────
-let W, H;
-function resize() {
-  W = canvas.width  = window.innerWidth;
-  H = canvas.height = window.innerHeight;
+function scaleCanvas() {
+  const s = Math.min(window.innerWidth / W, (window.innerHeight) / H);
+  canvas.style.width  = Math.floor(W * s) + 'px';
+  canvas.style.height = Math.floor(H * s) + 'px';
 }
-resize();
-window.addEventListener('resize', resize);
+scaleCanvas();
+window.addEventListener('resize', scaleCanvas);
 
-// ── Constants ───────────────────────────────────────────────────
-const SHIP_SIZE    = 16;
-const THRUST_ACC   = 230;
-const ROTATE_SPD   = 3.8;
-const FRICTION     = 0.988;
-const BULLET_SPD   = 530;
-const BULLET_TTL   = 1.1;
-const BULLET_MAX   = 6;
-const INVINCIBLE_T = 2.8;
-const SAFE_R       = 120;
-const BASE_ROIDS   = 4;
+// ── Grid constants ────────────────────────────────────────────────
+// 480 × 640:  top 64 px = HUD,  remaining 576 = 12 rows × 48 px
+const TILE   = 48;
+const COLS   = 10;
+const ROWS   = 12;
+const HUD_H  = H - ROWS * TILE;           // 64 px
+const rowY   = r => HUD_H + r * TILE;
 
-const ROID_DATA = [
-  { r: 42, spd: 55,  score: 20, verts: 9,  color: '#c084fc' },
-  { r: 22, spd: 105, score: 50, verts: 7,  color: '#a8dadc' },
-  { r: 11, spd: 165, score: 100, verts: 6, color: '#e8d5f0' },
+// ── Lane definitions ──────────────────────────────────────────────
+// row 0 = goal, row 6 = safe median, row 11 = start — no cars
+const LANE_DEFS = [
+  { row:  1, dir:  1, spd: 125, color: '#f87060', count: 2, len: 1 },
+  { row:  2, dir: -1, spd:  95, color: '#60c0f8', count: 3, len: 1 },
+  { row:  3, dir:  1, spd:  75, color: '#f0c030', count: 2, len: 2 },
+  { row:  4, dir: -1, spd: 100, color: '#c084fc', count: 3, len: 1 },
+  { row:  5, dir:  1, spd: 115, color: '#ff8844', count: 2, len: 1 },
+  // row 6 = median safe zone
+  { row:  7, dir: -1, spd: 120, color: '#f87060', count: 2, len: 1 },
+  { row:  8, dir:  1, spd:  80, color: '#5af0a0', count: 3, len: 2 },
+  { row:  9, dir: -1, spd:  70, color: '#60c0f8', count: 2, len: 1 },
+  { row: 10, dir:  1, spd: 105, color: '#c084fc', count: 3, len: 1 },
 ];
+const ROAD_ROWS = new Set(LANE_DEFS.map(l => l.row));
 
-// ── Input ───────────────────────────────────────────────────────
-const keys = {};
-let   fireReady = true;
-
-window.addEventListener('keydown', e => {
-  keys[e.code] = true;
-  if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
-  if (e.code === 'Space' && fireReady) { tryFire(); fireReady = false; }
-  if (e.code === 'KeyP') { if (gameState === 'playing') gameState = 'paused'; else if (gameState === 'paused') gameState = 'playing'; }
-});
-window.addEventListener('keyup', e => {
-  keys[e.code] = false;
-  if (e.code === 'Space') fireReady = true;
-});
-
-// ── State ───────────────────────────────────────────────────────
-let gameState = 'start';
-let score, hiScore = 0, lives, wave;
-let ship, bullets, asteroids, particles;
+// ── Game state ────────────────────────────────────────────────────
+let gameState = 'title';   // title | playing | dead | win | gameover
+let score, hiScore = 0, lives, level;
+let player, cars, particles, stateTimer;
 let lastTime = 0;
 
-// ── Factories ────────────────────────────────────────────────────
-function makeShip() {
-  return { x: W/2, y: H/2, vx: 0, vy: 0, angle: -Math.PI/2, thrusting: false, invTimer: INVINCIBLE_T };
+// ── Input ─────────────────────────────────────────────────────────
+function tryMove(dx, dy) {
+  if (gameState === 'title' || gameState === 'gameover') { startGame(); return; }
+  if (gameState !== 'playing' || !player.alive) return;
+  player.col = Math.max(0, Math.min(COLS - 1, player.col + dx));
+  player.row = Math.max(0, Math.min(ROWS - 1, player.row + dy));
+  if (player.row === 0) onGoal();
 }
 
-function makeAsteroid(x, y, si) {
-  const d = ROID_DATA[si];
-  const ang = Math.random() * Math.PI * 2;
-  const spd = d.spd * (0.65 + Math.random() * 0.7);
-  const verts   = d.verts;
-  const offsets = Array.from({ length: verts }, () => 0.65 + Math.random() * 0.65);
-  return {
-    x, y,
-    vx: Math.cos(ang) * spd,
-    vy: Math.sin(ang) * spd,
-    r: d.r, si, verts, offsets,
-    rot: Math.random() * Math.PI * 2,
-    rotSpd: (Math.random() - 0.5) * 1.4,
-  };
-}
-
-function burst(x, y, color, count) {
-  for (let i = 0; i < count; i++) {
-    const a   = Math.random() * Math.PI * 2;
-    const spd = 55 + Math.random() * 195;
-    const life = 0.45 + Math.random() * 0.75;
-    particles.push({ x, y, vx: Math.cos(a)*spd, vy: Math.sin(a)*spd, life, maxLife: life, r: 1.4 + Math.random()*2.2, color });
+window.addEventListener('keydown', e => {
+  const code = e.code;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD','Enter'].includes(code))
+    e.preventDefault();
+  if (code === 'ArrowUp'    || code === 'KeyW') tryMove( 0, -1);
+  if (code === 'ArrowDown'  || code === 'KeyS') tryMove( 0,  1);
+  if (code === 'ArrowLeft'  || code === 'KeyA') tryMove(-1,  0);
+  if (code === 'ArrowRight' || code === 'KeyD') tryMove( 1,  0);
+  if (code === 'Space' || code === 'Enter') {
+    if (gameState === 'title' || gameState === 'gameover') startGame();
   }
+});
+
+function bindDpad(id, dx, dy) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  const go = e => { e.preventDefault(); tryMove(dx, dy); };
+  btn.addEventListener('touchstart', go, { passive: false });
+  btn.addEventListener('mousedown',  go);
+}
+bindDpad('m-up',    0, -1);
+bindDpad('m-down',  0,  1);
+bindDpad('m-left', -1,  0);
+bindDpad('m-right', 1,  0);
+
+canvas.addEventListener('click',    () => { if (gameState === 'title' || gameState === 'gameover') startGame(); });
+canvas.addEventListener('touchend', e  => { e.preventDefault(); if (gameState === 'title' || gameState === 'gameover') startGame(); }, { passive: false });
+
+// ── Factories ─────────────────────────────────────────────────────
+function makePlayer() {
+  return { col: 4, row: 11, alive: true };
 }
 
-// ── Helpers ──────────────────────────────────────────────────────
-function d2(ax, ay, bx, by) { const dx=ax-bx, dy=ay-by; return dx*dx+dy*dy; }
-
-function wrap(obj) {
-  const pad = 65;
-  if (obj.x < -pad)    obj.x += W + pad*2;
-  if (obj.x > W+pad)   obj.x -= W + pad*2;
-  if (obj.y < -pad)    obj.y += H + pad*2;
-  if (obj.y > H+pad)   obj.y -= H + pad*2;
-}
-
-function shipTip(s) {
-  return { x: s.x + Math.cos(s.angle)*SHIP_SIZE, y: s.y + Math.sin(s.angle)*SHIP_SIZE };
-}
-
-// ── Game actions ──────────────────────────────────────────────────
-function tryFire() {
-  if (gameState !== 'playing') return;
-  if (bullets.length >= BULLET_MAX) return;
-  if (ship.invTimer > 0) return;
-  const tip = shipTip(ship);
-  bullets.push({ x: tip.x, y: tip.y, vx: Math.cos(ship.angle)*BULLET_SPD + ship.vx, vy: Math.sin(ship.angle)*BULLET_SPD + ship.vy, ttl: BULLET_TTL });
-}
-
-function spawnWave() {
-  const count = BASE_ROIDS + wave - 1;
-  for (let i = 0; i < count; i++) {
-    let x, y, tries = 0;
-    do {
-      x = Math.random() * W;
-      y = Math.random() * H;
-      tries++;
-    } while (tries < 50 && d2(x, y, ship.x, ship.y) < (SAFE_R + ROID_DATA[0].r) ** 2);
-    asteroids.push(makeAsteroid(x, y, 0));
+function makeCars(lvl) {
+  const out = [];
+  const mult = 1 + (lvl - 1) * 0.2;
+  for (const def of LANE_DEFS) {
+    const gap = W / def.count;
+    for (let i = 0; i < def.count; i++) {
+      const offset = Math.random() * gap * 0.6;
+      const sx = def.dir > 0 ? i * gap + offset : W - (i * gap + offset);
+      out.push({
+        row:   def.row,
+        x:     sx,
+        w:     def.len * TILE - 6,
+        spd:   def.spd * mult * def.dir,
+        color: def.color,
+      });
+    }
   }
+  return out;
 }
 
-function killShip() {
-  burst(ship.x, ship.y, '#0ff', 20);
-  burst(ship.x, ship.y, '#fff', 10);
+// ── Events ────────────────────────────────────────────────────────
+function startGame(fresh = true) {
+  if (fresh) { score = 0; lives = 3; level = 1; }
+  player     = makePlayer();
+  cars       = makeCars(level);
+  particles  = [];
+  stateTimer = 0;
+  gameState  = 'playing';
+}
+
+function onGoal() {
+  score += 100 + level * 50;
+  if (score > hiScore) hiScore = score;
+  burst(player.col * TILE + TILE / 2, rowY(0) + TILE / 2, '#00ff50', 26);
+  player.alive  = false;
+  gameState     = 'win';
+  stateTimer    = 1.5;
+}
+
+function onHit() {
+  burst(player.col * TILE + TILE / 2, rowY(player.row) + TILE / 2, '#f87060', 22);
+  player.alive = false;
   lives--;
-  if (lives <= 0) {
-    if (score > hiScore) hiScore = score;
-    gameState = 'gameover';
-    showOverlay(`GAME OVER`, `Score: ${score}  ·  Wave: ${wave}`, 'PLAY AGAIN');
-  } else {
-    ship = makeShip();
-    ship.invTimer = INVINCIBLE_T;
+  gameState    = 'dead';
+  stateTimer   = 1.1;
+}
+
+function burst(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = 55 + Math.random() * 210;
+    const t = 0.35 + Math.random() * 0.55;
+    particles.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: t, maxLife: t, r: 2 + Math.random()*3, color });
   }
 }
 
-function startGame() {
-  score = 0; lives = 3; wave = 1;
-  ship = makeShip();
-  bullets = []; asteroids = []; particles = [];
-  spawnWave();
-  gameState = 'playing';
-  overlay.classList.add('hidden');
-}
-
-function showOverlay(title, sub, btnLabel) {
-  overlay.innerHTML = `
-    <h1>${title}</h1>
-    <div class="edition" style="color:#a8dadc;margin-top:-8px">${sub}</div>
-    <button class="btn" id="startBtn">${btnLabel}</button>
-  `;
-  document.getElementById('startBtn').addEventListener('click', startGame);
-  overlay.classList.remove('hidden');
-}
-
-// ── Update ───────────────────────────────────────────────────────
+// ── Update ────────────────────────────────────────────────────────
 function update(dt) {
-  // Ship
-  if (keys['ArrowLeft']  || keys['KeyA']) ship.angle -= ROTATE_SPD * dt;
-  if (keys['ArrowRight'] || keys['KeyD']) ship.angle += ROTATE_SPD * dt;
-  ship.thrusting = !!(keys['ArrowUp'] || keys['KeyW']);
-  if (ship.thrusting) {
-    ship.vx += Math.cos(ship.angle) * THRUST_ACC * dt;
-    ship.vy += Math.sin(ship.angle) * THRUST_ACC * dt;
-  }
-  const fr = Math.pow(FRICTION, dt * 60);
-  ship.vx *= fr; ship.vy *= fr;
-  ship.x  += ship.vx * dt; ship.y += ship.vy * dt;
-  wrap(ship);
-  if (ship.invTimer > 0) ship.invTimer -= dt;
-
-  // Bullets
-  bullets = bullets.filter(b => {
-    b.x += b.vx * dt; b.y += b.vy * dt; b.ttl -= dt; wrap(b);
-    return b.ttl > 0;
-  });
-
-  // Asteroids
-  for (const a of asteroids) {
-    a.x += a.vx * dt; a.y += a.vy * dt; a.rot += a.rotSpd * dt; wrap(a);
+  // Cars always scroll (animated even on overlays)
+  for (const c of cars) {
+    c.x += c.spd * dt;
+    if (c.spd > 0 && c.x > W + TILE)        c.x = -c.w;
+    if (c.spd < 0 && c.x < -c.w - TILE)     c.x = W;
   }
 
   // Particles
   particles = particles.filter(p => {
     p.x += p.vx * dt; p.y += p.vy * dt;
-    p.vx *= 0.94; p.vy *= 0.94;
-    p.life -= dt;
+    p.vx *= 0.91; p.vy *= 0.91; p.life -= dt;
     return p.life > 0;
   });
 
-  // Bullet × Asteroid
-  const deadB = new Set(), deadA = new Set(), newRoids = [];
-  for (let i = 0; i < bullets.length; i++) {
-    for (let j = 0; j < asteroids.length; j++) {
-      if (deadA.has(j)) continue;
-      const b = bullets[i], a = asteroids[j];
-      if (d2(b.x, b.y, a.x, a.y) < a.r * a.r) {
-        deadB.add(i); deadA.add(j);
-        score += ROID_DATA[a.si].score;
-        burst(a.x, a.y, ROID_DATA[a.si].color, 6 + (2 - a.si) * 5);
-        if (a.si < 2) {
-          newRoids.push(makeAsteroid(a.x, a.y, a.si + 1));
-          newRoids.push(makeAsteroid(a.x, a.y, a.si + 1));
-        }
-      }
-    }
-  }
-  bullets   = bullets.filter((_, i) => !deadB.has(i));
-  asteroids = asteroids.filter((_, i) => !deadA.has(i));
-  asteroids.push(...newRoids);
-
-  // Ship × Asteroid
-  if (ship.invTimer <= 0) {
-    for (const a of asteroids) {
-      if (d2(ship.x, ship.y, a.x, a.y) < (a.r + SHIP_SIZE * 0.65) ** 2) {
-        killShip(); break;
-      }
+  if (gameState === 'playing' && player.alive) {
+    // Collision: player footprint vs car rects (pixel-based)
+    const px1 = player.col * TILE + 7;
+    const px2 = (player.col + 1) * TILE - 7;
+    for (const c of cars) {
+      if (c.row !== player.row) continue;
+      if (px1 < c.x + c.w - 4 && px2 > c.x + 4) { onHit(); return; }
     }
   }
 
-  // Wave clear
-  if (asteroids.length === 0) {
-    wave++;
-    ship.invTimer = INVINCIBLE_T;
-    spawnWave();
+  if (gameState === 'dead' || gameState === 'win') {
+    stateTimer -= dt;
+    if (stateTimer <= 0) {
+      if (gameState === 'dead') {
+        if (lives <= 0) gameState = 'gameover';
+        else            startGame(false);
+      } else {
+        level++;
+        startGame(false);
+      }
+    }
   }
 }
 
-// ── Draw ──────────────────────────────────────────────────────────
-function glow(color, blur) { ctx.shadowColor = color; ctx.shadowBlur = blur; }
-
-function drawShip(s) {
-  if (s.invTimer > 0 && Math.floor(s.invTimer * 9) % 2 === 0) return;
-  ctx.save();
-  ctx.translate(s.x, s.y);
-  ctx.rotate(s.angle);
-  ctx.strokeStyle = '#0ff';
-  ctx.lineWidth = 2;
-  glow('#0ff', 14);
+// ── Drawing helpers ───────────────────────────────────────────────
+function rrect(x, y, w, h, r) {
   ctx.beginPath();
-  ctx.moveTo(SHIP_SIZE, 0);
-  ctx.lineTo(-SHIP_SIZE * 0.68, SHIP_SIZE * 0.58);
-  ctx.lineTo(-SHIP_SIZE * 0.38, 0);
-  ctx.lineTo(-SHIP_SIZE * 0.68, -SHIP_SIZE * 0.58);
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y,   x+w, y+r);
+  ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x,   y+h, x,   y+h-r);
+  ctx.lineTo(x, y+r);   ctx.quadraticCurveTo(x,   y,   x+r, y);
   ctx.closePath();
-  ctx.stroke();
-  // Thruster flame
-  if (s.thrusting && Math.random() > 0.25) {
-    const flicker = 6 + Math.random() * 11;
-    ctx.strokeStyle = `hsl(${20 + Math.random()*30|0},100%,60%)`;
-    glow('#f80', 12);
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.moveTo(-SHIP_SIZE * 0.38, SHIP_SIZE * 0.24);
-    ctx.lineTo(-SHIP_SIZE * 0.38 - flicker, 0);
-    ctx.lineTo(-SHIP_SIZE * 0.38, -SHIP_SIZE * 0.24);
-    ctx.stroke();
+}
+
+// ── Draw: background ─────────────────────────────────────────────
+function drawBg() {
+  // HUD strip
+  ctx.fillStyle = '#06060f';
+  ctx.fillRect(0, 0, W, HUD_H);
+  ctx.strokeStyle = 'rgba(0,200,160,0.18)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, HUD_H); ctx.lineTo(W, HUD_H); ctx.stroke();
+
+  // Goal row
+  ctx.fillStyle = '#051a05';
+  ctx.fillRect(0, rowY(0), W, TILE);
+  ctx.fillStyle = 'rgba(0,255,80,0.07)';
+  ctx.fillRect(0, rowY(0), W, TILE);
+  ctx.strokeStyle = 'rgba(0,255,80,0.45)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, rowY(1)); ctx.lineTo(W, rowY(1)); ctx.stroke();
+
+  // Road rows
+  ctx.setLineDash([10, 12]);
+  for (let r = 1; r <= 10; r++) {
+    if (r === 6) continue;
+    const col = r % 2 === 0 ? '#0f0f22' : '#0d0d1a';
+    ctx.fillStyle = col;
+    ctx.fillRect(0, rowY(r), W, TILE);
+    ctx.strokeStyle = 'rgba(255,220,50,0.06)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, rowY(r)); ctx.lineTo(W, rowY(r)); ctx.stroke();
   }
+  ctx.setLineDash([]);
+
+  // Median safe zone
+  ctx.fillStyle = '#0e0e28';
+  ctx.fillRect(0, rowY(6), W, TILE);
+  ctx.fillStyle = 'rgba(100,100,255,0.06)';
+  ctx.fillRect(0, rowY(6), W, TILE);
+  ctx.strokeStyle = 'rgba(120,120,255,0.3)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(0, rowY(6));   ctx.lineTo(W, rowY(6));   ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, rowY(7));   ctx.lineTo(W, rowY(7));   ctx.stroke();
+
+  // Start zone
+  ctx.fillStyle = '#051a05';
+  ctx.fillRect(0, rowY(11), W, TILE);
+  ctx.fillStyle = 'rgba(0,255,80,0.04)';
+  ctx.fillRect(0, rowY(11), W, TILE);
+  ctx.strokeStyle = 'rgba(0,255,80,0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, rowY(11)); ctx.lineTo(W, rowY(11)); ctx.stroke();
+
+  // Row labels
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(0,255,80,0.45)';
+  ctx.font      = 'bold 11px monospace';
+  ctx.letterSpacing = '4px';
+  ctx.fillText('GOAL', W/2, rowY(0) + TILE/2 + 4);
+  ctx.letterSpacing = '0px';
+  ctx.fillStyle = 'rgba(120,120,255,0.32)';
+  ctx.font      = '11px monospace';
+  ctx.fillText('SAFE ZONE', W/2, rowY(6) + TILE/2 + 4);
+}
+
+// ── Draw: cars ────────────────────────────────────────────────────
+function drawCar(c) {
+  const y = rowY(c.row);
+  ctx.save();
+  ctx.shadowColor = c.color;
+  ctx.shadowBlur  = 12;
+  ctx.fillStyle   = c.color + '28';
+  rrect(c.x + 2, y + 5, c.w - 4, TILE - 10, 7);
+  ctx.fill();
+  ctx.strokeStyle = c.color;
+  ctx.lineWidth   = 1.8;
+  rrect(c.x + 2, y + 5, c.w - 4, TILE - 10, 7);
+  ctx.stroke();
+  // windshield highlight
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle   = c.color;
+  ctx.shadowBlur  = 0;
+  const ww = Math.min(c.w * 0.26, 16);
+  const wx = c.spd > 0 ? c.x + c.w - ww - 7 : c.x + 7;
+  ctx.fillRect(wx, y + 9, ww, TILE - 18);
   ctx.restore();
 }
 
-function drawAsteroid(a) {
-  const d = ROID_DATA[a.si];
+// ── Draw: player ──────────────────────────────────────────────────
+function drawPlayer() {
+  if (!player || !player.alive) return;
+  const cx = player.col * TILE + TILE / 2;
+  const cy = rowY(player.row) + TILE / 2;
+  const r  = TILE * 0.31;
   ctx.save();
-  ctx.translate(a.x, a.y);
-  ctx.rotate(a.rot);
-  ctx.strokeStyle = d.color;
-  ctx.lineWidth = 1.8;
-  glow(d.color, 10);
+  ctx.shadowColor = '#00ffff';
+  ctx.shadowBlur  = 22;
+  ctx.strokeStyle = '#00ffff';
+  ctx.lineWidth   = 2.5;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = 'rgba(0,255,255,0.11)';
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle  = '#00ffff';
+  ctx.shadowBlur = 10;
   ctx.beginPath();
-  for (let i = 0; i <= a.verts; i++) {
-    const ang = (i / a.verts) * Math.PI * 2;
-    const r   = a.r * a.offsets[i % a.verts];
-    i === 0 ? ctx.moveTo(Math.cos(ang)*r, Math.sin(ang)*r)
-            : ctx.lineTo(Math.cos(ang)*r, Math.sin(ang)*r);
-  }
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawBullet(b) {
-  ctx.save();
-  ctx.fillStyle = '#ff0';
-  glow('#ff0', 10);
-  ctx.beginPath();
-  ctx.arc(b.x, b.y, 3, 0, Math.PI*2);
+  ctx.moveTo(cx,          cy - r * 0.62);
+  ctx.lineTo(cx - r*0.4,  cy + r * 0.32);
+  ctx.lineTo(cx + r*0.4,  cy + r * 0.32);
+  ctx.closePath();
   ctx.fill();
   ctx.restore();
 }
 
-function drawParticle(p) {
-  ctx.save();
-  ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
-  ctx.fillStyle = p.color;
-  glow(p.color, 8);
-  ctx.beginPath();
-  ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-  ctx.fill();
-  ctx.restore();
+// ── Draw: particles ───────────────────────────────────────────────
+function drawParticles() {
+  for (const p of particles) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur  = 9;
+    ctx.fillStyle   = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
 }
 
+// ── Draw: HUD ─────────────────────────────────────────────────────
 function drawHUD() {
   ctx.save();
   ctx.shadowBlur = 0;
+  const midY = HUD_H / 2 + 6;
 
   // Score
-  ctx.fillStyle = '#e8eaf6';
-  ctx.font = 'bold 24px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText(score, 22, 38);
+  ctx.fillStyle  = '#e8eaf6';
+  ctx.font       = 'bold 16px monospace';
+  ctx.textAlign  = 'left';
+  ctx.fillText(`${score}`, 16, midY);
 
   // Hi-score
-  ctx.fillStyle = '#555';
-  ctx.font = '12px monospace';
+  ctx.fillStyle = '#334';
+  ctx.font      = '12px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText(`HI  ${hiScore}`, W/2, 28);
+  ctx.fillText(`HI  ${hiScore}`, W / 2, midY);
 
-  // Wave
-  ctx.fillStyle = '#c084fc';
+  // Lives (hearts)
   ctx.textAlign = 'right';
-  ctx.fillText(`WAVE  ${wave}`, W - 22, 28);
-  ctx.textAlign = 'left';
+  const hearts = '♥'.repeat(lives) + '♡'.repeat(Math.max(0, 3 - lives));
+  ctx.fillStyle  = '#f87060';
+  ctx.shadowColor = '#f87060';
+  ctx.shadowBlur  = 6;
+  ctx.font        = '18px monospace';
+  ctx.fillText(hearts, W - 16, midY);
 
-  // Lives (mini ship icons)
-  for (let i = 0; i < lives; i++) {
-    const lx = W - 22 - i * 24, ly = 50;
-    ctx.save();
-    ctx.translate(lx, ly);
-    ctx.rotate(-Math.PI / 2);
-    ctx.strokeStyle = '#0ff';
-    ctx.lineWidth = 1.5;
-    glow('#0ff', 6);
-    ctx.beginPath();
-    ctx.moveTo(9, 0);
-    ctx.lineTo(-6, 5.5);
-    ctx.lineTo(-3.5, 0);
-    ctx.lineTo(-6, -5.5);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.restore();
-  }
+  // Level badge
+  ctx.shadowBlur  = 0;
+  ctx.fillStyle   = 'rgba(192,132,252,0.18)';
+  rrect(W/2 - 30, midY - 20, 60, 24, 12);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(192,132,252,0.4)';
+  ctx.lineWidth   = 1;
+  rrect(W/2 - 30, midY - 20, 60, 24, 12);
+  ctx.stroke();
+  ctx.fillStyle   = '#c084fc';
+  ctx.font        = 'bold 11px monospace';
+  ctx.textAlign   = 'center';
+  ctx.fillText(`LV ${level}`, W/2, midY - 4);
 
   ctx.restore();
 }
 
-function drawPauseScreen() {
-  ctx.fillStyle = 'rgba(0,0,30,0.6)';
+// ── Draw: overlays ────────────────────────────────────────────────
+function overlay(title, sub, hint, titleColor) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,20,0.82)';
   ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = '#0ff';
-  ctx.font = 'bold 3rem monospace';
-  ctx.textAlign = 'center';
-  glow('#0ff', 20);
-  ctx.fillText('PAUSED', W/2, H/2);
-  ctx.font = '0.95rem monospace';
-  ctx.fillStyle = '#888';
+  ctx.shadowColor = titleColor || '#00ffff';
+  ctx.shadowBlur  = 28;
+  ctx.fillStyle   = titleColor || '#00ffff';
+  ctx.font        = 'bold 2.6rem monospace';
+  ctx.textAlign   = 'center';
+  ctx.fillText(title, W/2, H/2 - 32);
   ctx.shadowBlur = 0;
-  ctx.fillText('P  ·  resume', W/2, H/2 + 42);
-  ctx.textAlign = 'left';
+  if (sub) {
+    ctx.fillStyle = '#a8dadc';
+    ctx.font      = '1rem monospace';
+    ctx.fillText(sub, W/2, H/2 + 14);
+  }
+  if (hint) {
+    ctx.fillStyle = '#445';
+    ctx.font      = '0.75rem monospace';
+    ctx.fillText(hint, W/2, H/2 + 46);
+  }
+  ctx.restore();
 }
 
-// ── Game loop ─────────────────────────────────────────────────────
+function drawDeadFlash() {
+  const alpha = Math.min(1, stateTimer * 2.5) * 0.55;
+  ctx.save();
+  ctx.fillStyle = `rgba(0,0,20,${alpha})`;
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle   = '#f87060';
+  ctx.shadowColor = '#f87060';
+  ctx.shadowBlur  = 20;
+  ctx.font        = 'bold 2rem monospace';
+  ctx.textAlign   = 'center';
+  ctx.fillText('OUCH!', W/2, H/2 - 10);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle  = '#888';
+  ctx.font       = '0.85rem monospace';
+  const rem = lives > 0 ? `${lives} ${lives === 1 ? 'life' : 'lives'} remaining` : 'No lives left…';
+  ctx.fillText(rem, W/2, H/2 + 24);
+  ctx.restore();
+}
+
+function drawWinFlash() {
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,20,0.55)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle   = '#00ff50';
+  ctx.shadowColor = '#00ff50';
+  ctx.shadowBlur  = 24;
+  ctx.font        = 'bold 2rem monospace';
+  ctx.textAlign   = 'center';
+  ctx.fillText('NICE!', W/2, H/2 - 10);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle  = '#888';
+  ctx.font       = '0.85rem monospace';
+  ctx.fillText(`+${100 + level * 50} pts  ·  Level ${level + 1} up…`, W/2, H/2 + 24);
+  ctx.restore();
+}
+
+// ── Game loop ──────────────────────────────────────────────────────
 function loop(ts) {
   const dt = Math.min((ts - lastTime) / 1000, 0.05);
   lastTime = ts;
 
-  ctx.fillStyle = '#000011';
-  ctx.fillRect(0, 0, W, H);
+  update(dt);
 
-  if (gameState === 'playing' || gameState === 'paused') {
-    if (gameState === 'playing') update(dt);
-    for (const p of particles)  drawParticle(p);
-    for (const b of bullets)    drawBullet(b);
-    for (const a of asteroids)  drawAsteroid(a);
-    drawShip(ship);
-    drawHUD();
-    if (gameState === 'paused') drawPauseScreen();
-  }
+  ctx.clearRect(0, 0, W, H);
+  drawBg();
+  if (cars)       for (const c of cars) drawCar(c);
+  drawParticles();
+  drawPlayer();
+  drawHUD();
+
+  if      (gameState === 'title')    overlay('CROSSER', 'Dodge the traffic · reach the GOAL', '↑↓←→  ·  WASD  ·  tap the d-pad');
+  else if (gameState === 'dead')     drawDeadFlash();
+  else if (gameState === 'win')      drawWinFlash();
+  else if (gameState === 'gameover') overlay('GAME OVER', `Score: ${score}  ·  Reached level ${level}`, 'Tap or press any key to retry', '#f87060');
 
   requestAnimationFrame(loop);
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────
-document.getElementById('startBtn').addEventListener('click', startGame);
+score = 0; hiScore = 0; lives = 3; level = 1;
+player = makePlayer();
+cars = makeCars(1);
+particles = [];
+
 requestAnimationFrame(ts => { lastTime = ts; requestAnimationFrame(loop); });
 </script>
 </body>
