@@ -44,6 +44,18 @@ function scaleCanvas() {
 scaleCanvas();
 window.addEventListener('resize', scaleCanvas);
 
+// ── Polyfill: rounded rect path ──────────────────────────────────
+function rrect(x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y,     x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x,     y + h, r);
+  ctx.arcTo(x,     y + h, x,     y,     r);
+  ctx.arcTo(x,     y,     x + w, y,     r);
+  ctx.closePath();
+}
+
 // ── Constants ─────────────────────────────────────────────────────
 const GROUND_Y    = 520;
 const CUBE_SIZE   = 30;
@@ -73,7 +85,8 @@ let hiScore = parseInt(localStorage.getItem('ndash_hi') || '0', 10);
 
 // ── Game state ────────────────────────────────────────────────────
 let state = 'title'; // 'title' | 'playing' | 'dead' | 'gameover'
-let cube, obstacles, particles, trail;
+let cube, obstacles;
+let particles = [], trail = [];
 let score, dist, worldSpd, jumpsLeft;
 let animTime = 0, lastTime = 0, deathTimer = 0;
 let bgStars = [];
@@ -541,11 +554,11 @@ function drawHUD(theme) {
   const bx = 16, by = 56;
   ctx.shadowBlur = 0;
   ctx.fillStyle = 'rgba(255,255,255,0.07)';
-  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 3); ctx.fill();
+  rrect(bx, by, bw, bh, 3); ctx.fill();
   ctx.fillStyle = theme.cube;
   ctx.shadowColor = theme.cube;
   ctx.shadowBlur = 6;
-  ctx.beginPath(); ctx.roundRect(bx, by, bw * speedFrac, bh, 3); ctx.fill();
+  if (speedFrac > 0) { rrect(bx, by, bw * speedFrac, bh, 3); ctx.fill(); }
   ctx.shadowBlur = 0;
   ctx.font = '9px Segoe UI';
   ctx.textAlign = 'left';

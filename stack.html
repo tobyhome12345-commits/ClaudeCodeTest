@@ -68,7 +68,8 @@ window.addEventListener('resize', scaleCanvas);
 
 // ── Game state ───────────────────────────────────────────────────
 let state = 'title'; // 'title' | 'playing' | 'gameover'
-let score, hiScore, blocks, slider, particles, combo, bestCombo, drops;
+let score, hiScore, blocks, slider, combo, bestCombo, drops;
+let particles = [], trail = [];
 let animTime = 0, lastTime = 0;
 let sliderDir = 1, sliderSpd;
 let colorIdx = 0;
