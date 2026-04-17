@@ -78,7 +78,7 @@ function spawnInterval(score) {
 
 // ── State ──────────────────────────────────────────────────────────
 let state = 'title'; // 'title' | 'playing' | 'gameover'
-let bubbles, particles, score, misses, animTime = 0, lastTime = 0;
+let bubbles = [], particles = [], score = 0, misses = 0, animTime = 0, lastTime = 0;
 let spawnTimer = 0;
 let hiScore = parseInt(localStorage.getItem('npop_hi') || '0', 10);
 
