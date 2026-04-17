@@ -57,7 +57,7 @@ const BSIDE     = 10;
 const BRICK_H   = 20;
 const BRICK_W   = Math.floor((CW - 2*BSIDE - (COLS-1)*BGAP_X) / COLS);
 const BRICK_TOP = 68;
-const BASE_SPD  = 5.2;
+const BASE_SPD  = 310;
 const MAX_LIVES = 5;
 
 const HP_COL  = ['', '#00c8a0', '#f0c030', '#e94560'];
@@ -191,7 +191,7 @@ function launch(b) {
 
 function getSpd() {
   const cyc = Math.floor(levelIdx / LEVELS.length);
-  return BASE_SPD + levelIdx * 0.16 + cyc * 0.55;
+  return BASE_SPD + levelIdx * 18 + cyc * 30;
 }
 
 // ── Collision ─────────────────────────────────────────────────────────
