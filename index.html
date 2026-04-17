@@ -285,6 +285,23 @@
     footer a { color: var(--muted); text-decoration: none; }
     footer a:hover { color: var(--blue); }
 
+    /* ── Popular badge ───────────────────────────────────────── */
+    .popular-badge {
+      position: absolute;
+      top: 12px; right: 12px;
+      background: linear-gradient(135deg, #f0c030, #e94560);
+      color: #fff;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: 0.26rem 0.72rem;
+      border-radius: 20px;
+      text-transform: uppercase;
+      z-index: 2;
+      box-shadow: 0 0 14px rgba(240,192,48,0.45);
+      pointer-events: none;
+    }
+
     /* ── Responsive tweaks ───────────────────────────────────── */
     @media (max-width: 500px) {
       header { padding: 2.5rem 1rem 1.8rem; }
@@ -311,6 +328,31 @@
     <p class="section-label">Choose your game</p>
 
     <div class="games-grid" style="max-width:1300px">
+
+      <!-- Neon Breakout card — POPULAR -->
+      <a class="game-card purple" href="breakout.html">
+        <div class="card-glow"></div>
+        <div class="card-preview">
+          <div class="popular-badge">⭐ Popular!</div>
+          <div class="card-icon">🧱</div>
+        </div>
+        <div class="card-body">
+          <span class="card-tag">Arcade · Classic</span>
+          <h2 class="card-title">Neon Breakout</h2>
+          <p class="card-desc">
+            Smash neon bricks with a bouncing ball across 12 unique levels — diamonds,
+            fortresses, stripes and more. Catch power-ups for a wide paddle, multiball,
+            slow-mo, and a laser cannon.
+          </p>
+          <div class="card-features">
+            <span class="pill">12 levels + loop</span>
+            <span class="pill">5 power-ups</span>
+            <span class="pill">Particles + SFX</span>
+            <span class="pill">Mouse + Touch</span>
+          </div>
+          <div class="card-btn">Play Now</div>
+        </div>
+      </a>
 
       <!-- Shooter card -->
       <a class="game-card red" href="shooter.html">
@@ -502,30 +544,6 @@
         </div>
       </a>
 
-      <!-- Neon Breakout card -->
-      <a class="game-card purple" href="breakout.html">
-        <div class="card-glow"></div>
-        <div class="card-preview">
-          <div class="card-icon">🧱</div>
-        </div>
-        <div class="card-body">
-          <span class="card-tag">Arcade · Classic</span>
-          <h2 class="card-title">Neon Breakout</h2>
-          <p class="card-desc">
-            Smash neon bricks with a bouncing ball across 5 unique levels — diamonds,
-            fortresses, stripes and more. Catch power-ups for a wide paddle, multiball,
-            slow-mo, and a laser cannon.
-          </p>
-          <div class="card-features">
-            <span class="pill">5 levels + loop</span>
-            <span class="pill">5 power-ups</span>
-            <span class="pill">Particles + SFX</span>
-            <span class="pill">Mouse + Touch</span>
-          </div>
-          <div class="card-btn">Play Now</div>
-        </div>
-      </a>
-
       <!-- Memory Puzzle card -->
       <a class="game-card purple" href="memorypuzzle.html">
         <div class="card-glow"></div>
@@ -592,6 +610,30 @@
             <span class="pill">Bonus food</span>
             <span class="pill">Best score</span>
             <span class="pill">Arrow + Touch</span>
+          </div>
+          <div class="card-btn">Play Now</div>
+        </div>
+      </a>
+
+      <!-- Asteroids card -->
+      <a class="game-card red" href="asteroids.html">
+        <div class="card-glow"></div>
+        <div class="card-preview">
+          <div class="card-icon">🌑</div>
+        </div>
+        <div class="card-body">
+          <span class="card-tag">Arcade · Space Shooter</span>
+          <h2 class="card-title">Neon Asteroids</h2>
+          <p class="card-desc">
+            Classic space survival rebuilt in glowing neon. Thrust, rotate, and blast
+            rocks into smaller fragments before they collide with your ship — waves
+            grow relentless the further you push.
+          </p>
+          <div class="card-features">
+            <span class="pill">Infinite waves</span>
+            <span class="pill">3 asteroid sizes</span>
+            <span class="pill">Neon glow</span>
+            <span class="pill">Arrow + WASD</span>
           </div>
           <div class="card-btn">Play Now</div>
         </div>
