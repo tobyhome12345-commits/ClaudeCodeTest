@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon Pop</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d0d1a;
+      display: flex; align-items: center; justify-content: center;
+      height: 100vh; overflow: hidden;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      user-select: none;
+    }
+    canvas { display: block; cursor: pointer; }
+    #hub-btn {
+      position: fixed; top: 14px; left: 14px;
+      background: rgba(13,13,26,0.85); color: #a8dadc;
+      border: 1px solid #1a3a6a; border-radius: 20px;
+      padding: 0.4rem 1rem; font-size: 0.8rem; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+      text-decoration: none; z-index: 10;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    #hub-btn:hover { border-color: #a8dadc; color: #fff; }
+  </style>
+</head>
+<body>
+<a id="hub-btn" href="index.html">&#8592; Hub</a>
+<canvas id="c"></canvas>
+<script>
+const W = 480, H = 640;
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+function scaleCanvas() {
+  const s = Math.min(window.innerWidth / W, window.innerHeight / H);
+  canvas.style.width  = W * s + 'px';
+  canvas.style.height = H * s + 'px';
+  canvas.width = W; canvas.height = H;
+}
+scaleCanvas();
+window.addEventListener('resize', scaleCanvas);
+
+// ── Palette ────────────────────────────────────────────────────────
+const COLORS = ['#c084fc','#38bdf8','#4ade80','#facc15','#f87171','#fb923c','#e879f9','#60a5fa'];
+
+// ── Game config ────────────────────────────────────────────────────
+const HUD_H     = 72;
+const PLAY_TOP  = HUD_H;
+const MAX_MISS  = 5;
+const R_MIN     = 22;
+const R_MAX     = 44;
+// How long a bubble lives at various score thresholds
+function bubbleLife(score) {
+  if (score < 5)  return 2.2;
+  if (score < 15) return 1.8;
+  if (score < 30) return 1.5;
+  if (score < 50) return 1.2;
+  if (score < 80) return 1.0;
+  return 0.85;
+}
+// Max simultaneous bubbles
+function maxBubbles(score) {
+  if (score < 10) return 3;
+  if (score < 25) return 5;
+  if (score < 50) return 7;
+  return 9;
+}
+// Spawn interval in seconds
+function spawnInterval(score) {
+  if (score < 10) return 0.9;
+  if (score < 25) return 0.65;
+  if (score < 50) return 0.5;
+  return 0.38;
+}
+
+// ── State ──────────────────────────────────────────────────────────
+let state = 'title'; // 'title' | 'playing' | 'gameover'
+let bubbles, particles, score, misses, animTime = 0, lastTime = 0;
+let spawnTimer = 0;
+let hiScore = parseInt(localStorage.getItem('npop_hi') || '0', 10);
+
+// ── Bubble pool ────────────────────────────────────────────────────
+function spawnBubble() {
+  const r = R_MIN + Math.random() * (R_MAX - R_MIN);
+  const margin = r + 10;
+  bubbles.push({
+    x: margin + Math.random() * (W - margin * 2),
+    y: PLAY_TOP + margin + Math.random() * (H - PLAY_TOP - margin * 2),
+    r,
+    life: 1,         // 1 → 0, popped or expired
+    maxLife: bubbleLife(score),
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    popped: false,
+    popScale: 1,
+  });
+}
+
+// Progress through life: 0→0.5 = grow, 0.5→1 = shrink
+function bubbleRadius(b) {
+  const t = 1 - b.life / b.maxLife; // 0..1 over lifetime
+  const ease = t < 0.5 ? t / 0.5 : 1 - (t - 0.5) / 0.5;
+  return b.r * ease;
+}
+
+// ── Particles ──────────────────────────────────────────────────────
+function spawnPop(x, y, color) {
+  for (let i = 0; i < 14; i++) {
+    const ang = (i / 14) * Math.PI * 2 + Math.random() * 0.4;
+    const spd = 60 + Math.random() * 120;
+    particles.push({ x, y, vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd,
+      life: 1, decay: 1.2 + Math.random(), r: 2 + Math.random()*3, color });
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────
+function initGame() {
+  bubbles = []; particles = [];
+  score = 0; misses = 0; spawnTimer = 0;
+  state = 'playing';
+}
+
+// ── Hit test ───────────────────────────────────────────────────────
+function cvXY(cx, cy) {
+  const r = canvas.getBoundingClientRect();
+  return { x: (cx - r.left) * (W / r.width), y: (cy - r.top) * (H / r.height) };
+}
+
+function handleClick(px, py) {
+  if (state !== 'playing') return;
+  // Check bubbles back-to-front (topmost first)
+  for (let i = bubbles.length - 1; i >= 0; i--) {
+    const b = bubbles[i];
+    if (b.popped) continue;
+    const cr = bubbleRadius(b);
+    const dx = px - b.x, dy = py - b.y;
+    if (dx*dx + dy*dy <= cr*cr && cr > 4) {
+      b.popped = true;
+      score++;
+      if (score > hiScore) { hiScore = score; localStorage.setItem('npop_hi', hiScore); }
+      spawnPop(b.x, b.y, b.color);
+      return;
+    }
+  }
+}
+
+// ── Input ──────────────────────────────────────────────────────────
+let touchStartX = 0, touchStartY = 0;
+
+canvas.addEventListener('click', e => {
+  if (state === 'title')    { initGame(); return; }
+  if (state === 'gameover') { state = 'title'; return; }
+  const p = cvXY(e.clientX, e.clientY);
+  handleClick(p.x, p.y);
+});
+
+canvas.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  touchStartX = t.clientX; touchStartY = t.clientY;
+}, { passive: true });
+
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStartX, dy = t.clientY - touchStartY;
+  if (Math.abs(dx) > 18 || Math.abs(dy) > 18) return; // ignore drags
+  if (state === 'title')    { initGame(); return; }
+  if (state === 'gameover') { state = 'title'; return; }
+  const p = cvXY(t.clientX, t.clientY);
+  handleClick(p.x, p.y);
+}, { passive: false });
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.code === 'Enter') {
+    e.preventDefault();
+    if (state === 'title')    { initGame(); return; }
+    if (state === 'gameover') { state = 'title'; return; }
+  }
+});
+
+// ── Update ─────────────────────────────────────────────────────────
+function update(dt) {
+  animTime += dt;
+
+  for (const p of particles) {
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.life -= p.decay * dt;
+  }
+  particles = particles.filter(p => p.life > 0);
+
+  if (state !== 'playing') return;
+
+  // Age bubbles
+  for (const b of bubbles) {
+    if (b.popped) { b.popScale += dt * 6; b.life -= dt * 4; continue; }
+    b.life -= dt;
+    if (b.life <= 0) { misses++; b.life = 0; }
+  }
+  bubbles = bubbles.filter(b => b.life > 0);
+
+  if (misses >= MAX_MISS) { state = 'gameover'; return; }
+
+  // Spawn
+  spawnTimer -= dt;
+  if (spawnTimer <= 0 && bubbles.filter(b => !b.popped).length < maxBubbles(score)) {
+    spawnBubble();
+    spawnTimer = spawnInterval(score) * (0.7 + Math.random() * 0.6);
+  }
+}
+
+// ── Draw ───────────────────────────────────────────────────────────
+function drawBg() {
+  ctx.fillStyle = '#0d0d1a';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= W; x += 48) { ctx.beginPath(); ctx.moveTo(x,HUD_H); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = HUD_H; y <= H; y += 48) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+}
+
+function drawBubbles() {
+  for (const b of bubbles) {
+    const cr = b.popped ? b.r * b.popScale : bubbleRadius(b);
+    if (cr < 1) continue;
+    const alpha = b.popped ? Math.max(0, b.life) : 1;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = b.color;
+    ctx.shadowBlur = b.popped ? 0 : 18;
+
+    // Outer ring
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = b.popped ? 1.5 : 2.5;
+    ctx.beginPath(); ctx.arc(b.x, b.y, cr, 0, Math.PI * 2); ctx.stroke();
+
+    if (!b.popped) {
+      // Fill
+      ctx.fillStyle = b.color + '22';
+      ctx.fill();
+      // Inner highlight
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = b.color + '55';
+      ctx.beginPath(); ctx.arc(b.x, b.y - cr * 0.25, cr * 0.3, 0, Math.PI * 2); ctx.fill();
+
+      // Shrink warning: pulse red tint when < 30% life remaining
+      const lifeFrac = b.life / b.maxLife;
+      if (lifeFrac < 0.3) {
+        const warn = 1 - lifeFrac / 0.3;
+        ctx.strokeStyle = `rgba(248,113,113,${warn * 0.7})`;
+        ctx.lineWidth = 2.5 + warn * 3;
+        ctx.shadowColor = '#f87171';
+        ctx.shadowBlur = 12;
+        ctx.beginPath(); ctx.arc(b.x, b.y, cr, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color; ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawHUD() {
+  // Background strip
+  ctx.fillStyle = 'rgba(13,13,26,0.9)';
+  ctx.fillRect(0, 0, W, HUD_H);
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, HUD_H); ctx.lineTo(W, HUD_H); ctx.stroke();
+
+  ctx.save();
+  ctx.textAlign = 'center';
+
+  // Score
+  ctx.font = 'bold 34px Segoe UI';
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = '#c084fc'; ctx.shadowBlur = 18;
+  ctx.fillText(score, W / 2, 40);
+  ctx.shadowBlur = 0;
+  ctx.font = 'bold 11px Segoe UI';
+  ctx.fillStyle = '#7986a8';
+  ctx.fillText('BEST  ' + hiScore, W / 2, 58);
+
+  // Miss hearts (right side)
+  const hx = W - 16, hy = 28, hgap = 20;
+  for (let i = 0; i < MAX_MISS; i++) {
+    const alive = i < MAX_MISS - misses;
+    ctx.font = '16px serif';
+    ctx.globalAlpha = alive ? 1 : 0.2;
+    ctx.textAlign = 'right';
+    ctx.fillStyle = alive ? '#f87171' : '#7986a8';
+    ctx.fillText('♥', hx - i * hgap, hy + 8);
+  }
+
+  ctx.restore();
+}
+
+function drawTitle() {
+  drawBg();
+
+  // Floating demo bubbles
+  const demoBubbles = [
+    { x:100, y:220, r:38, color:'#c084fc', phase:0 },
+    { x:260, y:300, r:30, color:'#38bdf8', phase:1.2 },
+    { x:380, y:200, r:26, color:'#4ade80', phase:2.4 },
+    { x:160, y:420, r:32, color:'#facc15', phase:0.7 },
+    { x:340, y:430, r:24, color:'#f87171', phase:1.9 },
+  ];
+  for (const b of demoBubbles) {
+    const pulse = 0.7 + 0.3 * Math.sin(animTime * 1.4 + b.phase);
+    ctx.save();
+    ctx.shadowColor = b.color; ctx.shadowBlur = 20;
+    ctx.strokeStyle = b.color; ctx.lineWidth = 2.5;
+    ctx.globalAlpha = 0.5 + 0.3 * Math.sin(animTime * 0.9 + b.phase);
+    ctx.beginPath(); ctx.arc(b.x, b.y + Math.sin(animTime + b.phase) * 8, b.r * pulse, 0, Math.PI*2); ctx.stroke();
+    ctx.globalAlpha *= 0.25;
+    ctx.fillStyle = b.color;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  const pulse = 0.5 + 0.5 * Math.sin(animTime * 1.8);
+  ctx.save();
+  ctx.textAlign = 'center';
+
+  ctx.font = 'bold 68px Segoe UI';
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = '#c084fc'; ctx.shadowBlur = 28 + pulse * 20;
+  ctx.fillText('NEON', W/2, 130);
+
+  ctx.font = 'bold 74px Segoe UI';
+  ctx.fillStyle = '#c084fc';
+  ctx.shadowBlur = 40 + pulse * 30;
+  ctx.fillText('POP', W/2, 205);
+
+  ctx.shadowBlur = 0;
+  ctx.font = '15px Segoe UI';
+  ctx.fillStyle = '#7986a8';
+  ctx.fillText('Tap every bubble before it vanishes.', W/2, 248);
+  ctx.fillText('Miss ' + MAX_MISS + ' and it\'s over.', W/2, 270);
+
+  if (Math.sin(animTime * 2.5) > 0) {
+    ctx.font = 'bold 14px Segoe UI';
+    ctx.fillStyle = '#c084fc';
+    ctx.shadowColor = '#c084fc'; ctx.shadowBlur = 14;
+    ctx.fillText('TAP TO START', W/2, 318);
+  }
+  if (hiScore > 0) {
+    ctx.shadowBlur = 0;
+    ctx.font = '13px Segoe UI';
+    ctx.fillStyle = '#7986a8';
+    ctx.fillText('Best: ' + hiScore, W/2, 344);
+  }
+  ctx.restore();
+}
+
+function drawGameOver() {
+  drawBg();
+  drawParticles();
+
+  const pulse = 0.5 + 0.5 * Math.sin(animTime * 2.2);
+  ctx.save();
+  ctx.textAlign = 'center';
+
+  ctx.font = 'bold 52px Segoe UI';
+  ctx.fillStyle = '#f87171';
+  ctx.shadowColor = '#f87171'; ctx.shadowBlur = 20 + pulse * 18;
+  ctx.fillText('GAME OVER', W/2, 200);
+
+  ctx.font = 'bold 56px Segoe UI';
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = '#fff'; ctx.shadowBlur = 10;
+  ctx.fillText(score, W/2, 278);
+  ctx.shadowBlur = 0;
+  ctx.font = '14px Segoe UI';
+  ctx.fillStyle = '#7986a8';
+  ctx.fillText('SCORE', W/2, 298);
+
+  if (score > 0 && score >= hiScore) {
+    ctx.font = 'bold 15px Segoe UI';
+    ctx.fillStyle = '#facc15';
+    ctx.shadowColor = '#facc15'; ctx.shadowBlur = 14;
+    ctx.fillText('★ NEW BEST ★', W/2, 330);
+  } else if (hiScore > 0) {
+    ctx.shadowBlur = 0;
+    ctx.font = '13px Segoe UI';
+    ctx.fillStyle = '#7986a8';
+    ctx.fillText('Best: ' + hiScore, W/2, 330);
+  }
+
+  if (Math.sin(animTime * 2.5) > 0) {
+    ctx.font = 'bold 14px Segoe UI';
+    ctx.fillStyle = '#c084fc';
+    ctx.shadowColor = '#c084fc'; ctx.shadowBlur = 12;
+    ctx.fillText('TAP TO PLAY AGAIN', W/2, 400);
+  }
+  ctx.restore();
+}
+
+// ── Loop ───────────────────────────────────────────────────────────
+function loop(ts) {
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+  update(dt);
+  if      (state === 'title')    drawTitle();
+  else if (state === 'playing')  { drawBg(); drawBubbles(); drawParticles(); drawHUD(); }
+  else if (state === 'gameover') drawGameOver();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(ts => { lastTime = ts; requestAnimationFrame(loop); });
+</script>
+</body>
+</html>
