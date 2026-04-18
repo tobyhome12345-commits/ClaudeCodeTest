@@ -136,7 +136,7 @@ canvas.addEventListener('click', onAction);
 // ── SCENE HELPERS ────────────────────────────────────────────────
 function waterY()    { return H * 0.585; }
 function dockEndX()  { return W * 0.525; }
-function rodTip()    { return { x: dockEndX() - 52, y: waterY() - 66 }; }
+function rodTip()    { return { x: dockEndX() - 52, y: waterY() - 74 }; }
 function lakeLeft()  { return W * 0.03; }
 function lakeRight() { return dockEndX() - 10; }
 
@@ -445,18 +445,18 @@ function drawDock() {
   ctx.fillRect(dsc, wy - 4, W - dsc, 4);
   // Planks
   ctx.fillStyle = plankColor;
-  ctx.fillRect(dec - 45, wy - 10, dsc - dec + 45 + (W - dsc), 10);
+  ctx.fillRect(dec - 45, wy - 18, dsc - dec + 45 + (W - dsc), 18);
   // Posts
   ctx.fillStyle = postColor;
   for (const px of [dec - 32, dec + 2, dec + 36]) {
-    ctx.fillRect(px-4, wy-4, 8, 28);
+    ctx.fillRect(px-4, wy-18, 8, 42);
   }
 }
 
 function drawPlayer() {
   const wy = waterY();
   const px = dockEndX() - 10;
-  const py = wy - 10;
+  const py = wy - 18;
   const na = nightA();
   const skin   = na > 0.3 ? '#1a1310' : '#e8c8a0';
   const shirt  = na > 0.3 ? '#182030' : '#3060a0';
@@ -493,7 +493,7 @@ function drawRodAndLine() {
     // Still draw the rod resting
     const wy = waterY();
     const px = dockEndX() - 10;
-    const py = wy - 10;
+    const py = wy - 18;
     const na = nightA();
     ctx.strokeStyle = na > 0.3 ? '#3a2810' : '#6a4820';
     ctx.lineWidth = 2.5;
@@ -506,7 +506,7 @@ function drawRodAndLine() {
   const rt = rodTip();
   const wy = waterY();
   const px = dockEndX() - 10;
-  const py = wy - 10;
+  const py = wy - 18;
   const na = nightA();
   // Rod stick
   ctx.strokeStyle = na > 0.3 ? '#3a2810' : '#6a4820';
