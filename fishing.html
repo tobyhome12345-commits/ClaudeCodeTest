@@ -20,10 +20,19 @@
       text-shadow: 0 1px 3px rgba(0,0,0,0.95);
     }
     #log .hdr { font-size: 13px; color: #ffe080; margin-bottom: 1px; }
+    #back {
+      position: fixed; top: 14px; left: 14px;
+      color: rgba(255,255,255,0.7); font-family: monospace; font-size: 13px;
+      text-decoration: none; text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+      background: rgba(0,0,0,0.35); padding: 6px 12px; border-radius: 6px;
+      transition: color 0.15s, background 0.15s;
+    }
+    #back:hover { color: #fff; background: rgba(0,0,0,0.6); }
   </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<a id="back" href="index.html">← Hub</a>
 <div id="hint">SPACE or CLICK to cast</div>
 <div id="log"><div class="hdr">🎣 Catch Log</div></div>
 <script>
@@ -447,7 +456,7 @@ function drawDock() {
 function drawPlayer() {
   const wy = waterY();
   const px = dockEndX() - 10;
-  const py = wy - 8;
+  const py = wy - 10;
   const na = nightA();
   const skin   = na > 0.3 ? '#1a1310' : '#e8c8a0';
   const shirt  = na > 0.3 ? '#182030' : '#3060a0';
@@ -484,7 +493,7 @@ function drawRodAndLine() {
     // Still draw the rod resting
     const wy = waterY();
     const px = dockEndX() - 10;
-    const py = wy - 8;
+    const py = wy - 10;
     const na = nightA();
     ctx.strokeStyle = na > 0.3 ? '#3a2810' : '#6a4820';
     ctx.lineWidth = 2.5;
@@ -497,7 +506,7 @@ function drawRodAndLine() {
   const rt = rodTip();
   const wy = waterY();
   const px = dockEndX() - 10;
-  const py = wy - 8;
+  const py = wy - 10;
   const na = nightA();
   // Rod stick
   ctx.strokeStyle = na > 0.3 ? '#3a2810' : '#6a4820';
